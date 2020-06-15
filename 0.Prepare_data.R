@@ -20,6 +20,7 @@ s.dir <- "Y:/GB_Habitat_Classification/spatial_data"
 p.dir <- "Y:/GB_Habitat_Classification/plots"
 o.dir <- "Y:/GB_Habitat_Classification/outputs"
 
+#### PRESENCE-ABSENCE DATA ----
 
 ### Load data ----
 
@@ -57,17 +58,17 @@ points(dfs)
 
 # Filter data to use just where there is lidar and multib --
 
-#dnew <- raster::extract(b, dfs, sp=T)
-#str(dnew)
+dnew <- raster::extract(b, dfs, sp=T)
+str(dnew)
 
-#dfnew <- as.data.frame(dnew)
-#dfnew <- na.omit(dfnew)
-#str(dfnew)
+dfnew <- as.data.frame(dnew)
+dfnew <- na.omit(dfnew)
+str(dfnew)
 
-#dfsnew <- dfnew
-#coordinates(dfsnew) <- ~longitude+latitude
-#points(dfsnew, pch = 20, col="red")
-#h <- dfsnew
+dfsnew <- dfnew
+coordinates(dfsnew) <- ~longitude+latitude
+points(dfsnew, pch = 20, col="red")
+h <- dfsnew
 
 # save points --
 #write.csv(dfnew, paste(d.dir, "GB_Bruvs_fine_bathy_habitat_presence_absence_broad.csv"))
@@ -97,15 +98,16 @@ tpi <- raster::terrain(b, "TPI")
 tri <- raster::terrain(b, "TRI")
 roughness <- raster::terrain(b, "roughness")
 flowdir <- raster::terrain(b, "flowdir")
+b@data@names <- "depth"
 
-predictors <- stack(slope4, slope8, aspect4, aspect8, tpi, tri, roughness, flowdir)
+predictors <- stack(b, slope4, slope8, aspect4, aspect8, tpi, tri, roughness, flowdir)
 plot(predictors)
 
 names(predictors)
 namesp <- names(predictors)
 
 # save
-writeRaster(predictors, paste(s.dir,"predictors.tif", sep='/'))
+writeRaster(predictors, paste(s.dir,"predictors.tif", sep='/'), overwrite=T)
 write.csv(namesp, paste(s.dir, "namespredictors.csv", sep='/'))
 
 ###  Extract predictor values for each observation ----
@@ -120,21 +122,25 @@ head(hab_pred)
 library(reshape2)
 
 # choose ID vars
-ids <- c("X",  "campgnd",  "sample", "GB__CMR", "slope4", "slope8", "aspect", "aspect8","tpi",
-         "tri",       "roughness", "flowdir",   "coords.x1", "coords.x2")
+ids <- c("X",  "campaignid",  "sample", "depth", "slope4", "slope8", "aspect4", "aspect8","tpi",
+         "tri",       "roughness", "flowdir",   "latitude", "longitude")
 
 
 Bruv.broad <- melt(hab_pred, id.vars=ids)
 head(Bruv.broad)
 names(Bruv.broad)[names(Bruv.broad)=="variable"] <- "Class"
+names(Bruv.broad)[names(Bruv.broad)=="value"] <- "presence.absence"
 str(Bruv.broad)
 
 sp1 <- Bruv.broad
-coordinates(sp1) <- ~coords.x1+coords.x2
+coordinates(sp1) <- ~longitude+latitude
 plot(b)
 plot(sp1, border="white", col="lightgrey", add=TRUE)
 plot(sp1, col=rainbow(7), pch=20, fill=sp1$Class, add=TRUE)
 
 # save
 writeOGR(sp1, dsn= s.dir, layer= "GB_Bruvs_fine_bathy_habitat_presence_absence_broad", driver="ESRI Shapefile", overwrite_layer=TRUE)
-write.csv(Bruv.broad, paste(d.dir, "GB_Bruvs_fine_bathy_habitat_presence_absence_broad.csv"))
+write.csv(Bruv.broad, paste(d.dir, "tidy", "GB_Bruvs_fine_bathy_habitat_presence_absence_broad.csv", sep='/'))
+
+
+### DOMINANT CLASS DATA ----
