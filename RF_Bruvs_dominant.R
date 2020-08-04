@@ -8,6 +8,9 @@
 library(ggplot2)
 library(cowplot)
 library(randomForest)
+library(sp)
+library(rgdal)
+library(raster)
 
 # Clear memory ----
 rm(list=ls())
@@ -26,6 +29,12 @@ df <- read.csv(paste(d.dir, "tidy", "GB_Bruvs_fine_bathy_habitat_dominant_broad.
 head(df)
 str(df) # check the factors and the predictors
 any(is.na(df)) # check for NA's in the data
+
+p <- stack(paste(s.dir, "predictors.tif", sep='/'))
+namesp <- read.csv(paste(s.dir, "namespredictors.csv", sep='/'))
+namesp
+names(p) <- namesp[,2]
+names(p)
 
 
 ## Prepare data ----
@@ -48,6 +57,15 @@ levels(df2$Class)
 
 model <- randomForest(Class ~ ., data=df2, ntree=2001, proximity=TRUE)
 model # this is really bad: OOB = 100%
+model$importance
+model$classes
+
+test <- raster::predict(p, model)
+plot(test)
+
+e <- drawExtent()
+testx <- crop(test, e)
+plot(testx)
 
 
 ### RF - 2 habitat classes ----
@@ -70,7 +88,15 @@ length(df3[df3$Class=="Macroalgae",])
 
 model2 <- randomForest(Class ~ ., data=df3, ntree=2001, proximity=T, mtry=3)
 model2 # this is OOB = 4.17 %
+model2$importance
 
+
+test <- raster::predict(p, model2)
+plot(test)
+
+e <- drawExtent()
+testx <- crop(test, e)
+plot(testx)
 
 ### RF - vegetated vs. unvegetated ----
 # try seagrass vs. macroalgae
@@ -99,9 +125,15 @@ length(df4[df4$Class=="unvegetated",])
 
 model3 <- randomForest(Class ~ ., data=df4, ntree=2001, proximity=T, mtry=3)
 model3 # this is OOB = 12.5 %
+model3$importance
+
 
 test1 <- raster::predict(p, model3)
 plot(test1)
+
+e <- drawExtent()
+testx <- crop(test1, e)
+plot(testx)
 
 ### RF - MA+TURF vs Seagrass ----
 # using only 'vegetated' data obviously 
@@ -129,7 +161,12 @@ summary(df5) #58 MA, 69 Seagrass
 any(is.na(df5))
 
 model4 <- randomForest(Class ~ ., data=df5, ntree=2001, proximity=T, mtry=3)
-model4 # this is OOB = 12.5 %
+model4 # this is OOB = 48.03 %
+model4$importance
 
 test <- raster::predict(p, model4)
 plot(test)
+
+e <- drawExtent()
+testx <- crop(test, e)
+plot(testx)
