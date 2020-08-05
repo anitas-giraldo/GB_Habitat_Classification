@@ -11,6 +11,8 @@ library(randomForest)
 library(sp)
 library(rgdal)
 library(raster)
+library(caTools)
+library(reshape2)
 
 # Clear memory ----
 rm(list=ls())
@@ -49,14 +51,36 @@ colnames(df2)[colnames(df2)=="Max_if_2_habitats_have_same"] <- "Class"
 names(df2)
 str(df2)
 levels(df2$Class)
+summary(df2)
+head(df2)
+
+## Plot predictors correlations by class -----
+
+# reshape df to long --
+dfl <- melt(df2, id.vars= "Class", value.name = "Value", variable.name = "Predictor")
+head(dfl)
+
+p <- ggplot(dfl, aes(x = Predictor, y = Predictor, color = Class)) +
+  geom_point() +
+  facet_grid(rows = vars(Predictors), cols = vars(Predictors))
+
+p
 
 
+### Get train and test data ----
 
-### RF - 7 habitat classes ----
-# this is using all the habitat classes = 7 in total
+sample <- sample.split(df2$flowdir, SplitRatio = 0.75)
+train <- subset(df2, sample == TRUE)
+test  <-subset(df2, sample == FALSE)
+dim(train) # [1] 109  10
+dim(test) # [1] 35 10
 
-model <- randomForest(Class ~ ., data=df2, ntree=2001, proximity=TRUE)
-model # this is really bad: OOB = 100%
+
+### RF - 5 habitat classes ----
+# this is using all the habitat classes = 5 in total
+
+model <- randomForest(Class ~ ., data=train, ntree=501, proximity=TRUE)
+model #  OOB = 59.63%
 model$importance
 model$classes
 
