@@ -6,6 +6,7 @@
 ### Load libraries ----
 
 library(ggplot2)
+library(ggthemes)
 library(cowplot)
 library(randomForest)
 library(sp)
@@ -13,6 +14,14 @@ library(rgdal)
 library(raster)
 library(caTools)
 library(reshape2)
+library(tidyr)
+library(car)
+library(lattice)
+library(dplyr)
+library(raster)
+library(rasterVis)
+library(zoo)
+library(sf)
 
 # Clear memory ----
 rm(list=ls())
@@ -56,15 +65,42 @@ head(df2)
 
 ## Plot predictors correlations by class -----
 
-# reshape df to long --
-dfl <- melt(df2, id.vars= "Class", value.name = "Value", variable.name = "Predictor")
-head(dfl)
+# matrix scatterplot of just these 13 variables --
+scatterplotMatrix(df2[2:10], col = "Class")
 
-p <- ggplot(dfl, aes(x = Predictor, y = Predictor, color = Class)) +
-  geom_point() +
-  facet_grid(rows = vars(Predictors), cols = vars(Predictors))
+plot(df2[2:10], col = df2$Class)
+legend("center", 
+       legend = levels(df2$Class))
 
-p
+### Check Predicitor correlations ---
+
+# define function mosthighlycorrelated --
+# https://little-book-of-r-for-multivariate-analysis.readthedocs.io/en/latest/src/multivariateanalysis.html
+
+# linear correlation coefficients for each pair of variables in your data set, 
+# in order of the correlation coefficient. This lets you see very easily which pair of variables are most highly correlated.
+
+mosthighlycorrelated <- function(mydataframe,numtoreport)
+{
+  # find the correlations
+  cormatrix <- cor(mydataframe)
+  # set the correlations on the diagonal or lower triangle to zero,
+  # so they will not be reported as the highest ones:
+  diag(cormatrix) <- 0
+  cormatrix[lower.tri(cormatrix)] <- 0
+  # flatten the matrix into a dataframe for easy sorting
+  fm <- as.data.frame(as.table(cormatrix))
+  # assign human-friendly names
+  names(fm) <- c("First.Variable", "Second.Variable","Correlation")
+  # sort and print the top n correlations
+  head(fm[order(abs(fm$Correlation),decreasing=T),],n=numtoreport)
+}
+
+
+mosthighlycorrelated(df2[2:10], 9) # This results in only depth, rough and slope 4 not being correlated above 0.95
+
+
+## MAKE BETTER PLOT -- TO do still -----
 
 
 ### Get train and test data ----
@@ -75,52 +111,132 @@ test  <-subset(df2, sample == FALSE)
 dim(train) # [1] 109  10
 dim(test) # [1] 35 10
 
-
-### RF - 5 habitat classes ----
+### MODEL 1 ----
+### RF - 5 habitat classes ---
 # this is using all the habitat classes = 5 in total
+# Used only the preds that were not correlated: depth, slope4, roughness
 
-model <- randomForest(Class ~ ., data=train, ntree=501, proximity=TRUE)
-model #  OOB = 59.63%
+model <- randomForest(Class ~ ., data=train %>% select(c(Class, depth, slope4, roughness)) , ntree=501, proximity=TRUE)
+model #  OOB = 55.05%
 model$importance
 model$classes
 
-test <- raster::predict(p, model)
-plot(test)
+ptest <- p
+names(ptest)
+ptest <- dropLayer(p, c(3:7,9))
 
+## Predict ----
+
+test <- raster::predict(ptest, model)
+
+## Plot ----
+
+plot(test)
 e <- drawExtent()
 testx <- crop(test, e)
 plot(testx)
 
+# basic plot using lattice --
+# https://pjbartlein.github.io/REarthSysSci/rasterVis01.html
 
-### RF - 2 habitat classes ----
-# try seagrass vs. macroalgae
+lp <- levelplot(testx)
+lp
+class(lp) # trellis
+
+
+
+#### MODEL 2 ----
+### RF - 5 habitat classes ---
+# try using all predictors ---
 
 # remove all the Classes that are not SG or MA
 levels(df2$Class)
 
-df3 <- df2[df2$Class!="Consolidated",]
-df3 <- df3[df3$Class!="Turf.algae",]
-df3 <- df3[df3$Class!="Unconsolidated",]
-
-levels(df3$Class)
-df3 <- droplevels(df3)
-levels(df3$Class) ## "Macroalgae" "Seagrasses"
-
-head(df3)
-str(df3)
-length(df3[df3$Class=="Macroalgae",])
-
-model2 <- randomForest(Class ~ ., data=df3, ntree=2001, proximity=T, mtry=3)
-model2 # this is OOB = 4.17 %
+model2 <- randomForest(Class ~ ., data=df2, ntree=501, proximity=T, mtry=3)
+model2 # this is OOB = 56.94%  for 2001 trees / OOB = 56.94% for 501 trees
 model2$importance
 
-
+# Predict ----
 test <- raster::predict(p, model2)
+
+# plot ----
 plot(test)
 
 e <- drawExtent()
 testx <- crop(test, e)
 plot(testx)
+
+# Basic plot using lattice --
+lp <- levelplot(testx)
+lp
+
+### MODEL 3 ----
+### RF - 5 habitat classes ---
+# this is using all the habitat classes = 5 in total
+# Used all preds except flowdir
+
+model3 <- randomForest(Class ~ ., data=train %>% select(-flowdir) , ntree=501, proximity=TRUE, mtry = 3)
+model3 #  OOB = 53.21%
+model3$importance
+
+
+ptest <- p
+names(ptest)
+ptest <- dropLayer(p, c(9))
+
+## Predict ----
+
+test <- raster::predict(ptest, model)
+
+## Plot ----
+
+plot(test)
+e <- drawExtent()
+testx <- crop(test, e)
+plot(testx)
+
+# basic plot using lattice --
+# https://pjbartlein.github.io/REarthSysSci/rasterVis01.html
+
+lp <- levelplot(testx)
+lp
+class(lp) # trellis
+
+
+### MODEL 4 ----
+### RF - 3 habitat classes : unvegetated, seagrass, macroalgae ---
+# Using all preds 
+# to manipulate factors: https://stackoverflow.com/questions/35088812/combine-sets-of-factors-in-a-dataframe-with-dplyr
+
+model4 <- randomForest(Class ~ ., data=train %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")), 
+                       ntree=501, proximity=TRUE, mtry = 3)
+model4 #  OOB = 53.21%
+model3$importance
+
+
+ptest <- p
+names(ptest)
+ptest <- dropLayer(p, c(9))
+
+## Predict ----
+
+test <- raster::predict(ptest, model)
+
+## Plot ----
+
+plot(test)
+e <- drawExtent()
+testx <- crop(test, e)
+plot(testx)
+
+# basic plot using lattice --
+# https://pjbartlein.github.io/REarthSysSci/rasterVis01.html
+
+lp <- levelplot(testx)
+lp
+class(lp) # trellis
+
+
 
 ### RF - vegetated vs. unvegetated ----
 # try seagrass vs. macroalgae
