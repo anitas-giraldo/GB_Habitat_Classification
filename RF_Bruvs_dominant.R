@@ -22,6 +22,9 @@ library(raster)
 library(rasterVis)
 library(zoo)
 library(sf)
+library(fields)
+library(ROCR)
+library(caret)
 
 # Clear memory ----
 rm(list=ls())
@@ -66,7 +69,7 @@ head(df2)
 ## Plot predictors correlations by class -----
 
 # matrix scatterplot of just these 13 variables --
-scatterplotMatrix(df2[2:10], col = "Class")
+scatterplotMatrix(df2[2:10], col = df2$Class)
 
 plot(df2[2:10], col = df2$Class)
 legend("center", 
@@ -102,6 +105,9 @@ mosthighlycorrelated(df2[2:10], 9) # This results in only depth, rough and slope
 
 ## MAKE BETTER PLOT -- TO do still -----
 
+
+b <- bplot(train$aspect8, train$Class)
+plot(b)
 
 ### Get train and test data ----
 
@@ -186,7 +192,7 @@ ptest <- dropLayer(p, c(9))
 
 ## Predict ----
 
-test <- raster::predict(ptest, model)
+test <- raster::predict(ptest, model3)
 
 ## Plot ----
 
@@ -209,18 +215,18 @@ class(lp) # trellis
 # to manipulate factors: https://stackoverflow.com/questions/35088812/combine-sets-of-factors-in-a-dataframe-with-dplyr
 
 model4 <- randomForest(Class ~ ., data=train %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")), 
-                       ntree=501, proximity=TRUE, mtry = 3)
+                       ntree=1001, proximity=TRUE, mtry = 3)
 model4 #  OOB = 53.21%
-model3$importance
+model4$importance
 
-
-ptest <- p
-names(ptest)
-ptest <- dropLayer(p, c(9))
+# Remove predictors if needed --
+#ptest <- p
+#names(ptest)
+#ptest <- dropLayer(p, c(9))
 
 ## Predict ----
 
-test <- raster::predict(ptest, model)
+test <- raster::predict(p, model4)
 
 ## Plot ----
 
@@ -237,76 +243,186 @@ lp
 class(lp) # trellis
 
 
+### MODEL 5 ----
+### RF - 3 habitat classes : unvegetated, seagrass, macroalgae ---
+# Using all preds 
+# to manipulate factors: https://stackoverflow.com/questions/35088812/combine-sets-of-factors-in-a-dataframe-with-dplyr
 
-### RF - vegetated vs. unvegetated ----
-# try seagrass vs. macroalgae
+model5 <- randomForest(Class ~ ., data=train %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")) %>%
+                         select(-flowdir), 
+                       ntree=501, proximity=TRUE, mtry = 3)
+model5 #  OOB = 53.21%
+model5$importance
 
-# Change the names of classes to vegetated and unvegetated
-df4 <- df2
-levels(df4$Class)
-head(df4)
+# Remove predictors if needed --
+ptest <- p
+names(ptest)
+ptest <- dropLayer(p, c(9))
 
-levels(df4$Class)[levels(df4$Class)=="Consolidated"] <- "unvegetated"
-levels(df4$Class)[levels(df4$Class)=="Unconsolidated"] <- "unvegetated"
+## Predict ----
 
+test <- raster::predict(ptest, model5)
 
-levels(df4$Class)[levels(df4$Class)=="Macroalgae"] <- "vegetated"
-levels(df4$Class)[levels(df4$Class)=="Seagrasses"] <- "vegetated"
-levels(df4$Class)[levels(df4$Class)=="Turf.algae"] <- "vegetated"
-levels(df4$Class)
+## Plot ----
 
-
-head(df4)
-str(df4)
-summary(df4) #17 unvegetated
-any(is.na(df4))
-
-length(df4[df4$Class=="unvegetated",])
-
-model3 <- randomForest(Class ~ ., data=df4, ntree=2001, proximity=T, mtry=3)
-model3 # this is OOB = 12.5 %
-model3$importance
-
-
-test1 <- raster::predict(p, model3)
-plot(test1)
-
-e <- drawExtent()
-testx <- crop(test1, e)
-plot(testx)
-
-### RF - MA+TURF vs Seagrass ----
-# using only 'vegetated' data obviously 
-
-
-# remove unvegetated --
-df5 <- df2
-levels(df5$Class)
-head(df5)
-
-df5 <- df5[df5$Class!="Consolidated",]
-df5 <- df5[df5$Class!="Unconsolidated",]
-
-df5 <- droplevels(df5)
-levels(df5$Class)
-
-# change the names of vegetated
-levels(df5$Class)[levels(df5$Class)=="Turf.algae"] <- "Macroalgae"
-levels(df5$Class)
-
-
-head(df5)
-str(df5)
-summary(df5) #58 MA, 69 Seagrass
-any(is.na(df5))
-
-model4 <- randomForest(Class ~ ., data=df5, ntree=2001, proximity=T, mtry=3)
-model4 # this is OOB = 48.03 %
-model4$importance
-
-test <- raster::predict(p, model4)
 plot(test)
-
 e <- drawExtent()
 testx <- crop(test, e)
 plot(testx)
+
+# basic plot using lattice --
+# https://pjbartlein.github.io/REarthSysSci/rasterVis01.html
+
+lp <- levelplot(testx)
+lp
+class(lp) # trellis
+
+
+### MODEL 6 ----
+### RF - 3 habitat classes : unvegetated, seagrass, macroalgae ---
+# Using all preds 
+# to manipulate factors: https://stackoverflow.com/questions/35088812/combine-sets-of-factors-in-a-dataframe-with-dplyr
+
+model6 <- randomForest(Class ~ ., data=train %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")) %>%
+                         select(c(Class, depth, slope4, roughness)), 
+                       ntree=2001, proximity=TRUE, mtry = 3, importance=TRUE)
+model6 #  OOB = 53.21%
+model6$importance
+varImpPlot(model6)
+
+# using different code --
+# https://www.edureka.co/blog/random-forest-classifier/
+
+# Training using ‘random forest’ algorithm
+# Converting ‘Survived’ to a factor
+train$Class <- factor(train$Class)
+# Set a random seed
+set.seed(51)
+
+# had to use less classes, otherwise it wouldn't run,  I think because not enough replicates per class
+t=train %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"))
+head(t)
+
+TrainData <- t[,c(2,3,9)]
+TrainClasses <- t[,1]
+
+model7 <- caret::train(TrainData, TrainClasses, # Class is a function of the variables we decided to include
+               #data = train, # Use the train data frame as the training data
+               #preProcess = c("center", "scale"),
+               method = 'rf',# Use the 'random forest' algorithm
+               trControl = trainControl(method = 'cv', # Use cross-validation
+                                        search = 'random')) # Use 5 folds for cross-validation
+
+model7
+model7$finalModel
+#model7$importance
+v<- varImp(model7, scale =F)
+v
+varImp(model7)
+plot(v, top = 9)
+
+# AREA UNDER THE CURVE --
+roc_imp <- filterVarImp(x = train[, 2:10], y = train$Class)
+roc_imp
+
+
+# Remove predictors if needed --
+ptest <- p
+names(p)
+ptest <- dropLayer(p, c(3:7,9))
+ptest2 <- dropLayer(p, c(3:5,9))
+names(ptest2)
+
+## Predict ----
+
+test <- raster::predict(ptest, model6)
+
+test2 <- raster::predict(ptest, model7)
+
+## Plot ----
+
+plot(test)
+e <- drawExtent()
+testx <- crop(test, e)
+plot(testx)
+
+plot(test2)
+e <- drawExtent()
+testx <- crop(test2, e)
+plot(testx)
+
+# basic plot using lattice --
+# https://pjbartlein.github.io/REarthSysSci/rasterVis01.html
+
+lp <- levelplot(testx)
+lp
+class(lp) # trellis
+
+#### Validation set assessment model 6: looking at confusion matrix ----
+
+#prediction_for_table <- raster::predict(model6, test[,-c(1,4:8,10)])
+prediction_for_table6 <- raster::predict(model6, test %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")) %>%
+                                          select(c(Class, depth, slope4, roughness)))
+#table(observed=test[,-c(2:10)],  predicted=prediction_for_table)
+
+table(observed=test$Class %>%
+        car::recode("c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"),
+      predicted=prediction_for_table6)
+
+# confusion matrix
+caret::confusionMatrix(test$Class %>%
+                         car::recode("c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"),
+                       prediction_for_table6)
+
+
+
+# Validation set assessment #2: ROC curves and AUC
+# Needs to import ROCR package for ROC curve plotting:
+install.packages("ROCR")
+library(ROCR)
+
+
+# Calculate the probability of new observations belonging to each class
+# prediction_for_roc_curve will be a matrix with dimensions data_set_size x number_of_classes
+prediction_for_roc_curve <- predict(model6,
+                                    test %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")) %>%
+                                      select(c(Class, depth, slope4, roughness)),
+                                    type="prob")
+
+# Plot ROC curve ----
+# Use pretty colours:
+pretty_colours <- c("#F8766D","#00BA38","#619CFF")
+# Specify the different classes 
+classes <- levels(test$Class %>%
+                    car::recode("c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"))
+# For each class
+for (i in 1:3)
+{
+  # Define which observations belong to class[i]
+  true_values <- ifelse(test$Class %>%
+                          car::recode("c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")==classes[i],1,0)
+  # Assess the performance of classifier for class[i]
+  pred <- prediction(prediction_for_roc_curve[,i],true_values)
+  perf <- performance(pred, "tpr", "fpr")
+  if (i==1)
+  {
+    plot(perf,main="ROC Curve",col=pretty_colours[i]) 
+  }
+  else
+  {
+    plot(perf,main="ROC Curve",col=pretty_colours[i],add=TRUE) 
+  }
+  # Calculate the AUC and print it to screen
+  auc.perf <- performance(pred, measure = "auc")
+  print(auc.perf@y.values)
+}
+
+
+# Confusion matrix Model 7 ----
+
+prediction_for_table7 <- raster::predict(model7, test %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")) %>%
+                                          select(c(Class, depth, slope4, roughness)))
+
+caret::confusionMatrix(test$Class %>%
+                         car::recode("c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"),
+                       prediction_for_table7)
