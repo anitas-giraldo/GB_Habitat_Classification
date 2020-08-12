@@ -68,6 +68,7 @@ str(dfnew)
 dfsnew <- dfnew
 coordinates(dfsnew) <- ~longitude+latitude
 points(dfsnew, pch = 20, col="red")
+points(dfsnew, col=rainbow(7), pch=20, cex = 1, fill=dfsnew$Class, add=TRUE)
 h <- dfsnew
 
 # save points --
@@ -135,17 +136,16 @@ str(auv.broad)
 sp1 <- auv.broad
 coordinates(sp1) <- ~longitude+latitude
 plot(b)
-plot(sp1, border="white", col="lightgrey", add=TRUE)
+#plot(sp1, border="white", col="lightgrey", add=TRUE)
 plot(sp1, col=rainbow(7), pch=20, fill=sp1$Class, add=TRUE)
 
 
 ### Filter so only one obs per cell of bathy raster ###
-# UP TO HERE ----
-## use buffer?
+# a first look at the data, seems like only one observation per cell
 
 
 # save
-writeOGR(sp1, dsn= s.dir, layer= "GB_Bruvs_fine_bathy_habitat_presence_absence_broad", driver="ESRI Shapefile", overwrite_layer=TRUE)
-write.csv(Bruv.broad, paste(d.dir, "tidy", "GB_Bruvs_fine_bathy_habitat_presence_absence_broad.csv", sep='/'))
+writeOGR(sp1, dsn= s.dir, layer= "GB_auv_fine_bathy_habitat_presence_absence_broad", driver="ESRI Shapefile", overwrite_layer=TRUE)
+write.csv(auv.broad, paste(d.dir, "tidy", "GB_auv_fine_bathy_habitat_presence_absence_broad.csv", sep='/'))
 
 

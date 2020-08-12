@@ -116,22 +116,24 @@ hp
 
 hab_pred <- as.data.frame(hp)
 head(hab_pred)
-str(hab_pred)
+str(hab_pred) # 837 observations
 
 names(hab_pred)
 
+
+
 ## remove unwanted columns ----
-auv_dom <- hab_pred[,c(2:4,13, 15:23)] # not sure what to remove for AUV
+auv_dom <- hab_pred[,c(2:4,14, 16:24)] # not sure what to remove for AUV
 names(auv_dom)
 
 
 sp1 <- auv_dom
 coordinates(sp1) <- ~longitude+latitude
 plot(b)
-plot(sp1, border="white", col="lightgrey", add=TRUE)
+#plot(sp1, border="white", col="lightgrey", add=TRUE)
 plot(sp1, col=rainbow(7), pch=20, fill=sp1$Max_if_2_habitats_have_same, add=TRUE)
 
 # save
-writeOGR(sp1, dsn= s.dir, layer= "GB_auvs_fine_bathy_habitat_dominant_broad", driver="ESRI Shapefile", overwrite_layer=TRUE)
-write.csv(auv_dom, paste(d.dir, "tidy", "GB_auvs_fine_bathy_habitat_dominant_broad.csv", sep='/'))
+writeOGR(sp1, dsn= s.dir, layer= "GB_auv_fine_bathy_habitat_dominant_broad", driver="ESRI Shapefile", overwrite_layer=TRUE)
+write.csv(auv_dom, paste(d.dir, "tidy", "GB_auv_fine_bathy_habitat_dominant_broad.csv", sep='/'))
 
