@@ -38,13 +38,14 @@ o.dir <- "Y:/GB_Habitat_Classification/outputs"
 
 
 ### Load data ----
+dir(paste(d.dir, "tidy", sep='/'))
 
-df <- read.csv(paste(d.dir, "tidy", "GB_auv_fine_bathy_habitat_dominant_broad.csv", sep='/'))
+df <- read.csv(paste(d.dir, "tidy", "GB_auv_coarse_bathy_filtered_habitat_dominant_broad.csv", sep='/'))
 head(df)
 str(df) # check the factors and the predictors
 any(is.na(df)) # check for NA's in the data
 
-p <- stack(paste(s.dir, "predictors.tif", sep='/'))
+p <- stack(paste(s.dir, "predictors_coarse.tif", sep='/'))
 namesp <- read.csv(paste(s.dir, "namespredictors.csv", sep='/'))
 namesp
 names(p) <- namesp[,2]
@@ -55,14 +56,14 @@ names(p)
 
 # remove unneeded columns ---
 names(df)
-df2 <- df[,c(5:14)] # remove X, sample, lat, long
+df2 <- df %>% dplyr::select(Class, depth, slope4, slope8, aspect4, aspect8, tpi, tri, roughness, flowdir)
 head(df2)
 # change name of class
 names(df2)
-colnames(df2)[colnames(df2)=="Max_if_2_habitats_have_same"] <- "Class"
+#colnames(df2)[colnames(df2)=="Max_if_2_habitats_have_same"] <- "Class"
 names(df2)
 str(df2)
-levels(df2$Class) # "Consolidated"   "Macroalgae"     "Other"          "Seagrasses"     "Stony.corals"   "Turf.algae"     "Unconsolidated"
+levels(df2$Class) # "Consolidated"   "Macroalgae"     "Other"          "Seagrasses"     "Unconsolidated"
 summary(df2)
 head(df2)
 
@@ -100,7 +101,7 @@ mosthighlycorrelated <- function(mydataframe,numtoreport)
 }
 
 
-mosthighlycorrelated(df2[2:10], 20) # This results in only depth, rough and slope 4 not being correlated above 0.95
+mosthighlycorrelated(df2[2:10], 10) # This results in only depth, rough and slope 4 not being correlated above 0.95
 
 
 ## MAKE BETTER PLOT -- TO do still -----
@@ -115,20 +116,20 @@ mosthighlycorrelated(df2[2:10], 20) # This results in only depth, rough and slop
 sample <- sample.split(df2$flowdir, SplitRatio = 0.75)
 train <- subset(df2, sample == TRUE)
 test  <-subset(df2, sample == FALSE)
-dim(train) # [1] 628  10
-dim(test) # [1] 209  10
+dim(train) # [1] 64 10
+dim(test) # [1] 20 10
 
 
 
-# remove 'other' and 'stony coral' classes ----
+# remove 'other' class ----
 
 train <- train[train$Class != "Other",]
-train <- train[train$Class != "Stony.corals",]
+#train <- train[train$Class != "Stony.corals",]
 train <- droplevels(train)
 summary(train)
 
 test <- test[test$Class != "Other",]
-test <- test[test$Class != "Stony.corals",]
+#test <- test[test$Class != "Stony.corals",]
 test <- droplevels(test)
 summary(test)
 
@@ -136,10 +137,10 @@ summary(test)
 
 
 
-### RF - 5 habitat classes ---
-# this is using all the habitat classes = 5 in total
-# Used only the preds that were not correlated: depth, tri, roughness
-model <- randomForest(Class ~ ., data=train, ntree=501, proximity=T, mtry=3)
+### RF - 4 habitat classes ---
+# this is using all the habitat classes = 4 in total
+# Used all preds
+model <- randomForest(Class ~ ., data=train, ntree=1001, proximity=T, mtry=3)
 #model <- randomForest(Class ~ ., data=train %>% select(c(Class, depth, tri, roughness)) , ntree=501, proximity=TRUE)
 model #  OOB =  41.63%
 model$importance
@@ -156,21 +157,80 @@ pred <- raster::predict(ptest, model)
 ## Plot ----
 
 plot(pred)
-e <- drawExtent()
-testx <- crop(pred, e)
-plot(testx)
+
 
 # basic plot using lattice --
 # https://pjbartlein.github.io/REarthSysSci/rasterVis01.html
 
-lp <- levelplot(testx)
+lp <- levelplot(pred)
 lp
 #class(lp) # trellis
 
 
 
+# Optimising ntree and mtry ----
+
+# https://github.com/StatQuest/random_forest_demo/blob/master/random_forest_demo.R
+
+oob.error.data <- data.frame(
+  Trees=rep(1:nrow(model$err.rate), times=5),
+  Type=rep(c("OOB", "Consolidated" ,  "Macroalgae"  ,   "Seagrasses"   ,  "Unconsolidated"), each=nrow(model$err.rate)),
+  Error=c(model$err.rate[,"OOB"], 
+          model$err.rate[,"Consolidated"], 
+          model$err.rate[,"Macroalgae"],
+          model$err.rate[,"Seagrasses"],
+          model$err.rate[,"Unconsolidated"]))
+
+
+ggplot(data=oob.error.data, aes(x=Trees, y=Error)) +
+  geom_line(aes(color=Type))
+
+## If we want to compare this random forest to others with different values for
+## mtry (to control how many variables are considered at each step)...
+oob.values <- vector(length=10)
+for(i in 1:10) {
+  temp.model <- randomForest(Class ~ ., data=train, mtry=i, ntree=501)
+  oob.values[i] <- temp.model$err.rate[nrow(temp.model$err.rate),1]
+}
+oob.values
+## find the minimum error
+min(oob.values)
+## find the optimal value for mtry...
+which(oob.values == min(oob.values))
+
+
+
+model <- randomForest(Class ~ ., 
+                      #data=train %>%  mutate(Class = car::recode(Class, "'Unconsolidated'='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")),
+                      data = train,
+                      ntree=501, 
+                      proximity=TRUE, 
+                      mtry=which(oob.values == min(oob.values)))
+                      #mtry = 6)
+
+model
+
+## Predict ----
+
+test <- raster::predict(ptest, model)
+
+## Plot ----
+
+plot(test)
+#e <- drawExtent()
+#testx <- crop(test, e)
+lp <- levelplot(test)
+lp
+
+
+
+
+
+
+
+
 #### MODEL 2 ----
-### RF - 5 habitat classes ---
+### RF - 4 habitat classes ---
 # Using depth, tri and roughness ---
 
 # remove all the Classes that are not SG or MA
