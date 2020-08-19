@@ -112,7 +112,11 @@ namesp <- names(predictors)
 # save
 #writeRaster(predictors, paste(s.dir,"predictors_coarse.tif", sep='/'), overwrite=T)
 #write.csv(namesp, paste(s.dir, "namespredictors.csv", sep='/'))
-#predictors <- raster(paste(s.dir,"predictors_coarse.tif", sep='/'))
+
+# load predictors
+predictors <- stack(paste(s.dir,"predictors_coarse.tif", sep='/'))
+namesp <- read.csv(paste(s.dir,"namespredictors.csv", sep='/'))
+names(predictors) <- namesp[,2]
 
 ###  Extract predictor values for each observation ----
 hp <- raster::extract(predictors, h, sp=T)
@@ -138,28 +142,63 @@ plot(b)
 plot(sp1, pch=20, col=sp1$Max_if_2_habitats_have_same, add=TRUE)
 
 
-## Filter per pixel ----
+## Filter per cell ----
 # AUV data has many images / pixel
 # More frequent dominant class/pixel
 
-# to get  number of points per cell --
+# to get  coordinates of each cell and the value --
 d <- data.frame(coordinates(b2), count=b2[])
 
 head(d)
+str(d)
+
+
 
 # https://gis.stackexchange.com/questions/279079/extracting-value-of-raster-with-coordinates-using-r
 
+# extract cell ids with points on them --
 result <- raster::extract(b2, sp1, cellnumbers=T, df=T)
-
 head(result)
+str(result)
+result$cells <- as.factor(result$cells)
 
-resultsp <- raster::extract(b2, sp1, cellnumbers=T, sp =T)
+cellid <- as.data.frame(result %>%
+                          group_by(cells, GB_Bathy_250m) %>%
+                          # group_by(Class) %>%
+                          summarize(n()))
+str(cellid) # 84 obs
+head(cellid)
 
+cellid1 <- aggregate(GB_Bathy_250m~cells, data=result, mean)
+str(cellid1) # 84 obs -> 84 cells with AUV data
+
+
+
+# extract as spatial points cell ids --
+resultsp <- raster::extract(b2, sp1, cellnumbers=T, coordinates = T ,sp =T)
+resultsp
 head(resultsp)
+# get the coordinates --
+rdf <- as.data.frame(resultsp)
+str(rdf) 
+rdf$cells <- as.factor(rdf$cells)
 
+rdflat <- aggregate(latitude ~ cells, data=rdf, FUN=mean)
+rdflat
+str(rdflat) # 84 obs
+rdflon <- aggregate(longitude ~ cells, data=rdf, FUN=mean)
+str(rdflon)
+rdflon
+
+rdfcoords <- merge(rdflon, rdflat)
+str(rdfcoords)
+
+
+# make auv points a df
 sp1df <- as.data.frame(sp1)
 head(sp1df)
 
+# join auv poins and cell ids 
 sp1cells <- cbind(sp1df, result)
 head(sp1cells)
 
@@ -173,37 +212,46 @@ str(sp1cells)
 sp1cells$cells <- as.factor(sp1cells$cells)
 
 
-letsee <- sp1cells %>%
-  group_by(cells, Class) %>%
- # group_by(Class) %>%
-  summarize(n())
-
+# to get the dominant class and the cell id --
 letsee <- as.data.frame(sp1cells %>%
                           group_by(cells, Class) %>%
                           # group_by(Class) %>%
                           summarize(n()))
 head(letsee) # has cellnumbers but not coordinates
-str(letsee)
+str(letsee) # 208 obs
 names(letsee) <- c("cells", "Class", "n")
+str(letsee) # 208 obs
 
 ## aggregate data frame by cell and max n()
 ### Up to here ####
 # https://stackoverflow.com/questions/6289538/aggregate-a-dataframe-on-a-given-column-and-display-another-column
 domhcell <- aggregate(n ~ cells, data=letsee, max)
 head(domhcell)
-str(domhcell)
+str(domhcell) # 84 obs ## I need class info..
 
-domcells <- merge(domhcell, letsee, by.x= 'cells', all= F)
-head(domcells)
-str(domcells)
+# split the data using split: to get class with max n in each cell id
+#https://stackoverflow.com/questions/6289538/aggregate-a-dataframe-on-a-given-column-and-display-another-column  
 
-sp2 <- merge(domcells, sp1cells)
-head(sp2)
-str(sp2)
+splitdf <- do.call(rbind,lapply(split(letsee,letsee$cells), function(chunk) chunk[which.max(chunk$n),]))
+splitdf
+str(splitdf) # 84 obs
+ 
+# match cell ids to lats and longs ---
 
+coarseauv <- merge(splitdf, rdfcoords)
+str(coarseauv) # 84 obs
+head(coarseauv)
+
+# check!
+csp <- coarseauv
+coordinates(csp) <- ~longitude+latitude
+
+plot(b2)
+plot(b3)
+points(csp, pch = 20, cex=0.2, col=csp$Class)
 
 
 # save
-writeOGR(domcells, dsn= s.dir, layer= "GB_auv_coarse_bathy_habitat_dominant_broad", driver="ESRI Shapefile", overwrite_layer=TRUE)
-#write.csv(auv_dom, paste(d.dir, "tidy", "GB_coarse_fine_bathy_habitat_dominant_broad.csv", sep='/'))
+#writeOGR(csp, dsn= s.dir, layer= "GB_auv_coarse_bathy_filtered_habitat_dominant_broad", driver="ESRI Shapefile", overwrite_layer=TRUE)
+#write.csv(coarseauv, paste(d.dir, "tidy", "GB_auv_coarse_bathy_filtered_habitat_dominant_broad.csv", sep='/'))
 
