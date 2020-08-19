@@ -251,7 +251,28 @@ plot(b3)
 points(csp, pch = 20, cex=0.2, col=csp$Class)
 
 
-# save
-#writeOGR(csp, dsn= s.dir, layer= "GB_auv_coarse_bathy_filtered_habitat_dominant_broad", driver="ESRI Shapefile", overwrite_layer=TRUE)
-#write.csv(coarseauv, paste(d.dir, "tidy", "GB_auv_coarse_bathy_filtered_habitat_dominant_broad.csv", sep='/'))
+## Get predictor data for each point --
 
+data <- readOGR(paste(s.dir, "GB_auv_coarse_bathy_filtered_habitat_dominant_broad.shp", sep='/'))
+
+pts <- raster::extract(predictors, data, df=T)
+head(pts)
+str(pts)
+
+datadf <- as.data.frame(data)
+head(datadf)
+str(datadf)
+
+# join predictor info to classes --
+dnew <- cbind(datadf, pts)
+head(dnew)
+
+# make sp points
+dnews <- dnew
+coordinates(dnews) <- ~coords.x1+coords.x2
+plot(b2)
+points(dnews)
+
+# save
+#writeOGR(dnews, dsn= s.dir, layer= "GB_auv_coarse_bathy_filtered_habitat_dominant_broad", driver="ESRI Shapefile", overwrite_layer=TRUE)
+#write.csv(dnew, paste(d.dir, "tidy", "GB_auv_coarse_bathy_filtered_habitat_dominant_broad.csv", sep='/'))
