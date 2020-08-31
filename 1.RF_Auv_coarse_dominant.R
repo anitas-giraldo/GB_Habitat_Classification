@@ -25,6 +25,9 @@ library(sf)
 library(fields)
 library(ROCR)
 library(caret)
+library(surfin) # calculate random forest uncertainty
+#install.packages("rfinterval")
+library(rfinterval)
 
 # Clear memory ----
 rm(list=ls())
@@ -211,16 +214,34 @@ model <- randomForest(Class ~ .,
 model
 
 ## Predict ----
+# model -
+testp <- raster::predict(ptest, model)
 
-test <- raster::predict(ptest, model)
 
 ## Plot ----
 
-plot(test)
+plot(testp)
+
 #e <- drawExtent()
 #testx <- crop(test, e)
-lp <- levelplot(test)
+lp <- levelplot(testp)
 lp
+
+# Validation ----
+
+prediction_for_table1 <- predict(model, test 
+                                 # %>% mutate(Class = car::recode(Class, "c('Unconsolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"))
+)
+# %>%
+# select(c(Class, depth, slope4, roughness)))
+
+caret::confusionMatrix(test$Class, 
+                       #%>% car::recode("c('Unconsolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"),
+                       prediction_for_table1)
+
+
+
+
 
 
 
@@ -236,28 +257,87 @@ lp
 # remove all the Classes that are not SG or MA
 levels(train$Class)
 
-model2 <- randomForest(Class ~ ., data=train %>% select(c(Class, depth, tri, roughness)) , ntree=501, proximity=TRUE)
+model2 <- randomForest(Class ~ ., data=train %>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'"))
+                         # %>% select(c(Class, depth, tri, roughness)) 
+                       , ntree=501, proximity=TRUE)
 #model2 <- randomForest(Class ~ ., data=df2, ntree=501, proximity=T, mtry=3)
 model2 # this is OOB = 56.94%  for 2001 trees / OOB = 56.94% for 501 trees
 model2$importance
+model2$classes 
+model2$err.rate
+model2$predicted
+model2$votes
+
 
 # Predict ----
 ptest <- p
 names(ptest)
-ptest <- dropLayer(p, c(2:6,9))
+#ptest <- dropLayer(p, c(2:6,9))
 
 pred <- raster::predict(ptest, model2)
 
 # plot ----
 plot(pred)
-
-e <- drawExtent()
-testx <- crop(pred, e)
-plot(testx)
+pred
+# fix class levels for plotting --
+xx <-levels(pred)[[1]]
+xx$ID <- c('1','3', '2')
+xx$value <- c('Hard', 'Seagrass', 'Sand')
+levels(pred) <- xx
 
 # Basic plot using lattice --
-lp <- levelplot(testx)
+lp <- levelplot(pred)
 lp
+
+
+# uncertainty ----
+train1 <- train %>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'")) 
+test1 <- test %>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'"))
+
+output <- rfinterval(Class ~ ., train_data = train1 , 
+                     test_data = test1 ,
+                     method = c("split-conformal", "quantreg"),
+                     symmetry = TRUE,alpha = 0.1)
+
+
+output <- rfinterval(Class ~ ., train_data = train %>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'")), 
+                     test_data = test %>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'")),
+                     method = c("split-conformal", "quantreg"),
+                     symmetry = TRUE,alpha = 0.1)
+
+
+# Validation ----
+
+prediction_for_table1 <- predict(model, test 
+                                 # %>% mutate(Class = car::recode(Class, "c('Unconsolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"))
+)
+# %>%
+# select(c(Class, depth, slope4, roughness)))
+
+caret::confusionMatrix(test$Class, 
+                       #%>% car::recode("c('Unconsolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"),
+                       prediction_for_table1)
+
+
+# Feature selection using VSURF ----
+
+t <- train %>% mutate(Class = car::recode(Class, "'Unconsolidated'='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"))
+head(t)
+
+TrainData <- t[,c(2:10)]
+TrainClasses <- t[,1]
+
+
+rf.def <- VSURF(TrainData, TrainClasses)
+plot(rf.def)
+summary(rf.def) 
+rf.def$varselect.pred # [1] 1 7 4 2 6
+head(TrainData) # depth, tri, aspect4, slope4, tpi
+
+
+
+
+
 
 ### MODEL 3 ----
 ### RF - 5 habitat classes ---
