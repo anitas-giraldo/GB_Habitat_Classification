@@ -28,6 +28,7 @@ library(caret)
 library(surfin) # calculate random forest uncertainty
 #install.packages("rfinterval")
 library(rfinterval)
+library(VSURF)
 
 # Clear memory ----
 rm(list=ls())
@@ -267,6 +268,8 @@ model2$classes
 model2$err.rate
 model2$predicted
 model2$votes
+model2$confusion
+
 
 
 # Predict ----
@@ -275,6 +278,7 @@ names(ptest)
 #ptest <- dropLayer(p, c(2:6,9))
 
 pred <- raster::predict(ptest, model2)
+
 
 # plot ----
 plot(pred)
@@ -290,39 +294,68 @@ lp <- levelplot(pred)
 lp
 
 
-# uncertainty ----
-train1 <- train %>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'")) 
-test1 <- test %>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'"))
-
-output <- rfinterval(Class ~ ., train_data = train1 , 
-                     test_data = test1 ,
-                     method = c("split-conformal", "quantreg"),
-                     symmetry = TRUE,alpha = 0.1)
-
-
-output <- rfinterval(Class ~ ., train_data = train %>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'")), 
-                     test_data = test %>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'")),
-                     method = c("split-conformal", "quantreg"),
-                     symmetry = TRUE,alpha = 0.1)
-
 
 # Validation ----
 
-prediction_for_table1 <- predict(model, test 
-                                 # %>% mutate(Class = car::recode(Class, "c('Unconsolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"))
+prediction_for_table2 <- predict(model2, test 
+                                  %>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'"))
 )
 # %>%
 # select(c(Class, depth, slope4, roughness)))
 
-caret::confusionMatrix(test$Class, 
-                       #%>% car::recode("c('Unconsolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"),
-                       prediction_for_table1)
+caret::confusionMatrix(test$Class 
+                       #%>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'"),
+                       %>% car::recode("'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'"),
+                       prediction_for_table2)
+
+
+## Optimising ntree and mtry ----
+  
+  # https://github.com/StatQuest/random_forest_demo/blob/master/random_forest_demo.R
+  
+  oob.error.data2 <- data.frame(
+    Trees=rep(1:nrow(model2$err.rate), times=4),
+    Type=rep(c("OOB", "Hard" ,  "Seagrass"  ,   "Hard"   ), each=nrow(model2$err.rate)),
+    Error=c(model2$err.rate[,"OOB"], 
+            model2$err.rate[,"Hard"], 
+            model2$err.rate[,"Seagrass"],
+            model2$err.rate[,"Sand"]))
+
+
+ggplot(data=oob.error.data2, aes(x=Trees, y=Error)) +
+  geom_line(aes(color=Type))
+
+## If we want to compare this random forest to others with different values for
+## mtry (to control how many variables are considered at each step)...
+oob.values <- vector(length=10)
+for(i in 1:9) {
+  temp.model <- randomForest(Class ~ ., data=train %>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'"))
+                             , mtry=i, ntree=501)
+  oob.values[i] <- temp.model$err.rate[nrow(temp.model$err.rate),1]
+}
+oob.values
+## find the minimum error
+min(oob.values)
+## find the optimal value for mtry...
+which(oob.values == min(oob.values))
+
+
+
+model2 <- randomForest(Class ~ ., 
+                      data=train %>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'")),
+                      #data = train,
+                      ntree=501, 
+                      proximity=TRUE, 
+                      mtry = 3)
+                      #mtry=which(oob.values == min(oob.values)))
+#mtry = 6)
+
+model2
 
 
 # Feature selection using VSURF ----
 
-t <- train %>% mutate(Class = car::recode(Class, "'Unconsolidated'='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"))
-head(t)
+t <- train %>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'"))
 
 TrainData <- t[,c(2:10)]
 TrainClasses <- t[,1]
@@ -331,8 +364,8 @@ TrainClasses <- t[,1]
 rf.def <- VSURF(TrainData, TrainClasses)
 plot(rf.def)
 summary(rf.def) 
-rf.def$varselect.pred # [1] 1 7 4 2 6
-head(TrainData) # depth, tri, aspect4, slope4, tpi
+rf.def$varselect.pred # [1] 1 2
+head(TrainData) # depth,  slope4
 
 
 
@@ -344,14 +377,23 @@ head(TrainData) # depth, tri, aspect4, slope4, tpi
 # this is using all the habitat classes = 5 in total
 # Use only depth and tri
 
-model3 <- randomForest(Class ~ ., data=train %>% select(c(Class, depth, tri)) , ntree=501, proximity=TRUE)
-model3 #  OOB = 53.21%
+# data --
+train3 <- train %>% 
+  mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'")) %>% 
+  select(c(Class, depth, slope4))
+
+test3 <- train %>% 
+  mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'")) %>% 
+  select(c(Class, depth, slope4))
+
+model3 <- randomForest(Class ~ ., data=train3 , ntree=501, mtry=1,proximity=TRUE)
+model3 
 model3$importance
 
 
 ptest <- p
 names(ptest)
-ptest <- dropLayer(p, c(2:6,8:9))
+ptest <- dropLayer(p, c(3:9))
 
 ## Predict ----
 
@@ -360,16 +402,33 @@ pred <- raster::predict(ptest, model3)
 ## Plot ----
 
 plot(pred)
-e <- drawExtent()
-testx <- crop(pred, e)
-plot(testx)
 
-# basic plot using lattice --
-# https://pjbartlein.github.io/REarthSysSci/rasterVis01.html
+# fix class levels for plotting --
+xx <-levels(pred)[[1]]
+xx$ID <- c('1','3', '2')
+xx$value <- c('Hard', 'Seagrass', 'Sand')
+levels(pred) <- xx
 
-lp <- levelplot(testx)
+lp <- levelplot(pred)
 lp
-class(lp) # trellis
+
+
+# Validation ----
+
+prediction_for_table3 <- predict(model3, test3)
+                                 #%>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'"))
+#)
+# %>%
+# select(c(Class, depth, slope4, roughness)))
+
+caret::confusionMatrix(test3$Class, 
+                       #%>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'"),
+                       #%>% car::recode("'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'"),
+                       prediction_for_table3)
+
+
+
+
 
 
 ### MODEL 4 ----
