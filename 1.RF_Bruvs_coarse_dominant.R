@@ -128,6 +128,7 @@ test  <-subset(df2, sample == FALSE)
 dim(train) # [1] 245  10
 dim(test) # [1] 79 10
 
+summary(df2)
 
 # remove 'consolidated', 'sponges'classes ----
 
@@ -135,13 +136,13 @@ train <- train[train$Class != "Sponges",]
 train <- train[train$Class != "Consolidated",]
 train <- droplevels(train)
 summary(train)
-
+levels(train$Class)
 
 test <- test[test$Class != "Sponges",]
 test <- test[test$Class != "Consolidated",]
 test <- droplevels(test)
 summary(test)
-
+levels(test$Class)
 
 ### MODEL 1 ----
 ### RF - 3 habitat classes ---
