@@ -29,6 +29,9 @@ library(surfin) # calculate random forest uncertainty
 #install.packages("rfinterval")
 library(rfinterval)
 library(VSURF)
+library(ranger)
+library(GSIF)
+library(geoR)
 
 # Clear memory ----
 rm(list=ls())
@@ -148,23 +151,50 @@ summary(test)
 ### RF - 4 habitat classes ---
 # this is using all the habitat classes = 4 in total
 # Used all preds
-model <- randomForest(Class ~ ., data=train, ntree=1001, proximity=T, mtry=3)
+model <- randomForest(Class ~ ., data=train, ntree=1001, proximity=T, mtry=3, norm.votes=FALSE)
 #model <- randomForest(Class ~ ., data=train %>% select(c(Class, depth, tri, roughness)) , ntree=501, proximity=TRUE)
 model #  OOB =  41.63%
 model$importance
 model$classes
+model$votes
+model$err.rate
+model$proximity
 
 ptest <- p
 names(ptest)
 #ptest <- dropLayer(p, c(3:7,9))
 
+# predictor stack as df --
+pdf <- as.data.frame(p, xy = T)
+head(pdf)
+
+
+
 ## Predict ----
 
-pred <- raster::predict(ptest, model)
+pred <- raster::predict(ptest, model, type = "response")
+predse <- raster::predict(ptest, model, type = "prob")
+predvote <- raster::predict(ptest, model, type = "vote")
+pvotedf <- as.data.frame(predvote, xy = T)
+
+
+# testing spatial uncertainty predictions
+
+pred2 <- predict(model, pdf, type = 'response')
+pred2
+
+pred3 <- predict(model, pdf, type = 'prob')
+pred4 <- predict(model, pdf, type = 'vote')
+
+
+#pred <- predict(“model”, “predictor pts/raster stack”, type="response") #gives you response predictions
+#pred.se <- predict(“model”, “predictor pts/raster stack”, type="se") #gives you spatial SE predictions
 
 ## Plot ----
 
 plot(pred)
+plot(predse)
+plot(predvote)
 
 
 # basic plot using lattice --
