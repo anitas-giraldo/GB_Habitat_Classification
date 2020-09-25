@@ -25,16 +25,22 @@ library(sf)
 library(fields)
 library(ROCR)
 library(caret)
+library(geoR)
+library(gstat)
+#library(elsa)
+install.packages("corrplot")
+library(corrplot)
+library(broman)
 
 # Clear memory ----
 rm(list=ls())
 
 ### Set directories ----
-w.dir <- "Y:/GB_Habitat_Classification"
-d.dir <- "Y:/GB_Habitat_Classification/data"
-s.dir <- "Y:/GB_Habitat_Classification/spatial_data"
-p.dir <- "Y:/GB_Habitat_Classification/plots"
-o.dir <- "Y:/GB_Habitat_Classification/outputs"
+w.dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+d.dir <- paste(w.dir, "data", sep='/')
+s.dir <- paste(w.dir, "spatial_data", sep='/')
+p.dir <- paste(w.dir, "plots", sep='/')
+o.dir <- paste(w.dir, "outputs", sep='/')
 
 
 ### Load data ----
@@ -74,6 +80,58 @@ scatterplotMatrix(df2[2:10], col = df2$Class)
 plot(df2[2:10], col = df2$Class)
 legend("center", 
        legend = levels(df2$Class))
+
+## using corrplot ----
+
+# compute correlation matrix --
+C <- cor(df2[2:10])
+head(round(C,2))
+
+# correlogram : visualizing the correlation matrix --
+# http://www.sthda.com/english/wiki/visualize-correlation-matrix-using-correlogram#:~:text=Correlogram%20is%20a%20graph%20of%20correlation%20matrix.&text=In%20this%20plot%2C%20correlation%20coefficients,corrplot%20package%20is%20used%20here.
+#Positive correlations are displayed in blue and negative correlations in red color. 
+#Color intensity and the size of the circle are proportional to the correlation coefficients
+corrplot(C, method="circle")
+corrplot(C, method="pie")
+corrplot(C, method="color")
+corrplot(C, method="number", type = "upper")
+corrplot(C, method="color", type = "lower", order="hclust") #  “hclust” for hierarchical clustering order is used in the following examples
+
+# compute the p-value of correlations --
+# mat : is a matrix of data
+# ... : further arguments to pass to the native R cor.test function
+cor.mtest <- function(mat, ...) {
+  mat <- as.matrix(mat)
+  n <- ncol(mat)
+  p.mat<- matrix(NA, n, n)
+  diag(p.mat) <- 0
+  for (i in 1:(n - 1)) {
+    for (j in (i + 1):n) {
+      tmp <- cor.test(mat[, i], mat[, j], ...)
+      p.mat[i, j] <- p.mat[j, i] <- tmp$p.value
+    }
+  }
+  colnames(p.mat) <- rownames(p.mat) <- colnames(mat)
+  p.mat
+}
+# matrix of the p-value of the correlation
+p.mat <- cor.mtest(df2[2:10])
+head(p.mat[, 1:5])
+
+# customize correlogram --
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+corrplot(C, method="color", col=col(100),  
+         type="upper", order="hclust", 
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col="black", tl.srt=45, #Text label color and rotation
+         # Combine with significance
+         p.mat = p.mat, sig.level = 0.01, insig = "blank", 
+         # hide correlation coefficient on the principal diagonal
+         diag=FALSE 
+)
+
+#save - it doesnt work
+#ggsave(paste(p.dir, "BRUV-fine-corr.png", sep='/'), device = "png", width = 6.23, height = 4.18, dpi = 300)
 
 ### Check Predicitor correlations ---
 
@@ -286,7 +344,7 @@ class(lp) # trellis
 model6 <- randomForest(Class ~ ., data=train %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")) %>%
                          select(c(Class, depth, slope4, roughness)), 
                        ntree=2001, proximity=TRUE, mtry = 3, importance=TRUE)
-model6 #  OOB = 53.21%
+model6 #  OOB = 55.05%
 model6$importance
 varImpPlot(model6)
 
@@ -348,15 +406,49 @@ plot(testx)
 
 plot(test2)
 e <- drawExtent()
-testx <- crop(test2, e)
-plot(testx)
+test2 <- crop(test2, e)
+plot(test2)
 
 # basic plot using lattice --
 # https://pjbartlein.github.io/REarthSysSci/rasterVis01.html
 
-lp <- levelplot(testx)
+#pick colors --
+sg <- brocolors("crayons")["Jungle Green"] # "#78dbe2"
+sg <- brocolors("crayons")["Forest Green"] # "#78dbe2"
+sg <- brocolors("crayons")["Fern"] # "#78dbe2"
+alg <-  brocolors("crayons")["Raw Umber"] # "#1dacd6" 
+sand <-  brocolors("crayons")["Unmellow Yellow"] # "#f75394"
+
+# read gb cmr
+gb <- readOGR(dsn="C:/Users/00093391/Dropbox/UWA/Research Associate/PowAnalysis_for1sParksMeeting/Desktop/shapefiles")
+plot(gb)
+
+
+lp <- levelplot(test, col.regions=c(alg, sg, sand))
 lp
 class(lp) # trellis
+
+# https://oscarperpinan.github.io/rastervis/FAQ.html
+lp2 <- levelplot(test2, col.regions=c(alg, sg, sand), xlab = list("Longitude", fontface = "bold"),
+                 ylab = list("Latitude", fontface = "bold"))
+# with the gb polygon
+#lp2 <- levelplot(test2, col.regions=c(alg, sg, sand), xlab = list("Longitude", fontface = "bold"),
+#                 ylab = list("Latitude", fontface = "bold")) + layer(sp.polygons(gb))
+lp2
+#print(lp2)
+trellis.device(device ="png", filename = paste(p.dir, "Bruv-fine.png", sep='/'), width = 1000, height = 670, res = 200)
+print(lp2)
+dev.off()
+
+
+
+
+
+
+
+
+
+
 
 #### Validation set assessment model 6: looking at confusion matrix ----
 
@@ -426,3 +518,49 @@ prediction_for_table7 <- raster::predict(model7, test %>% mutate(Class = car::re
 caret::confusionMatrix(test$Class %>%
                          car::recode("c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"),
                        prediction_for_table7)
+
+
+#   #   #   #     #     #     #     #
+
+####        VARIOGRAM       ######
+# https://stats.idre.ucla.edu/r/faq/how-do-i-generate-a-variogram-for-spatial-data-in-r/
+# https://www.aspexit.com/en/implementing-variograms-in-r/
+# https://cran.r-project.org/web/packages/elsa/vignettes/elsa.html
+
+df <- read.csv(paste(d.dir, "tidy", "GB_Bruvs_fine_bathy_habitat_dominant_broad.csv", sep='/'))
+head(df)
+str(df) # check the factors and the predictors
+any(is.na(df)) # check for NA's in the data
+names(df)
+# rename column 
+names(df)[names(df) == "Max_if_2_habitats_have_same"] <- "class"
+names(df)
+
+#dataset is a dataframe (a table) with three columns: the longitude (x), the latitude (y) and the variable of interest
+# need to convert the classes to numeric
+# https://www.researchgate.net/post/What_could_be_the_most_appropriate_approach_for_applying_spatial_interpolation_to_categorical_variables
+
+str(df)
+class <- levels(df$class)
+class.no <- c("1", "2", "3", "4", "5")
+
+class.df <- cbind(class.no, class)
+class.df
+class.df <- as.data.frame(class.df)
+
+df2 <- merge(df, class.df, by = "class")
+head(df2)
+str(df2)
+df2$class.no <- as.numeric(df2$class.no)
+
+# transform df in to spatial points data frame ----
+coordinates(df2) <- ~longitude+latitude
+
+variog3 <- variogram(class.no~1, df2, cutoff = 0.5, width = 0.02)
+plot(variog3)
+
+# fit a semivariogram model to the data ----
+v.fit <- fit.variogram(variog1, vgm("Exp"))
+
+
+v <- variog(df2, max.dist = 0.5)
