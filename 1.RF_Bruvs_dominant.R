@@ -411,6 +411,7 @@ plot(test2)
 
 # basic plot using lattice --
 # https://pjbartlein.github.io/REarthSysSci/rasterVis01.html
+# https://stat.ethz.ch/pipermail/r-sig-geo/2013-March/017893.html
 
 #pick colors --
 sg <- brocolors("crayons")["Jungle Green"] # "#78dbe2"
