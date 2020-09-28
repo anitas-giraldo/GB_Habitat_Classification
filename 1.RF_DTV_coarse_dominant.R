@@ -28,6 +28,13 @@ library(caret)
 library(surfin) # calculate random forest uncertainty
 #install.packages("rfinterval")
 library(rfinterval)
+library(VSURF)
+library(ranger)
+library(GSIF)
+library(geoR)
+library(surfin) # calculate random forest uncertainty
+#install.packages("rfinterval")
+library(rfinterval)
 #install.packages("VSURF")
 library(VSURF)
 library(geoR)
@@ -51,9 +58,12 @@ o.dir <- paste(w.dir, "outputs", sep='/')
 ### Load data ----
 dir(paste(d.dir, "tidy", sep='/'))
 
-df <- read.csv(paste(d.dir, "tidy", "GB_auv_coarse_bathy_filtered_habitat_dominant_broad.csv", sep='/'))
+df <- read.csv(paste(d.dir, "tidy", "GB_dtv_coarse_bathy_filtered_habitat_dominant_broad.csv", sep='/'))
 head(df)
 str(df) # check the factors and the predictors
+any(is.na(df)) # check for NA's in the data
+df <- na.omit(df)
+str(df) # 309 obs -- check the factors and the predictors
 any(is.na(df)) # check for NA's in the data
 
 p <- stack(paste(s.dir, "predictors_coarse.tif", sep='/'))
@@ -83,19 +93,9 @@ names(df2)
 #colnames(df2)[colnames(df2)=="Max_if_2_habitats_have_same"] <- "Class"
 names(df2)
 str(df2)
-df2$Class <- as.factor(df2$Class)
-levels(df2$Class) # "total.seagrass" "Turf.algae"     "Unconsolidated"
+levels(df2$Class) # "Consolidated"   "Macroalgae"     "Other"          "Seagrasses"     "Unconsolidated"
 summary(df2)
 head(df2)
-
-## Plot predictors correlations by class -----
-
-# matrix scatterplot of just these 13 variables --
-scatterplotMatrix(df2[2:10], col = df2$Class)
-
-plot(df2[2:10], col = df2$Class)
-legend("center", 
-       legend = levels(df2$Class))
 
 
 ## using corrplot ----
@@ -149,6 +149,19 @@ corrplot(C, method="color", col=col(100),
 
 
 
+
+
+
+
+## Plot predictors correlations by class -----
+
+# matrix scatterplot of just these 13 variables --
+scatterplotMatrix(df2[2:10], col = df2$Class)
+
+plot(df2[2:10], col = df2$Class)
+legend("center", 
+       legend = levels(df2$Class))
+
 ### Check Predicitor correlations ---
 
 # define function mosthighlycorrelated --
@@ -185,21 +198,23 @@ mosthighlycorrelated(df2[2:10], 10) # This results in only depth, rough and slop
 
 
 ### Get train and test data ----
+levels(df2$Class) # "Other"          "Seagrasses"     "Turf.algae"     "Unconsolidated"
 
-sample <- caTools::sample.split(df2$flowdir, SplitRatio = 0.75)
+sample <- sample.split(df2$flowdir, SplitRatio = 0.75)
 train <- subset(df2, sample == TRUE)
 test  <-subset(df2, sample == FALSE)
-dim(train) # [1] 74 10
-dim(test) # [1] 25 10
+dim(train) # [1] 64 10
+dim(test) # [1] 20 10
+levels(train$Class) # "total.seagrass" "Turf.algae"     "Unconsolidated"
 
 
+# remove 'other' class ----
 
-# remove class if needed----
-
-train <- train[train$Class != "Other",]
+#train <- train[train$Class != "Other",]
 #train <- train[train$Class != "Stony.corals",]
 train <- droplevels(train)
 summary(train)
+levels(train$Class) # "Seagrasses"     "Turf.algae"     "Unconsolidated"
 
 #test <- test[test$Class != "Other",]
 #test <- test[test$Class != "Stony.corals",]
@@ -208,43 +223,70 @@ summary(test)
 
 ### MODEL 1 ----
 
-levels(train$Class)
+
 
 ### RF - 4 habitat classes ---
 # this is using all the habitat classes = 4 in total
 # Used all preds
-model <- randomForest(Class ~ ., data=train, ntree=1001, proximity=T, mtry=3)
+model <- randomForest(Class ~ ., data=train, ntree=1001, proximity=T, mtry=3, norm.votes=FALSE)
 #model <- randomForest(Class ~ ., data=train %>% select(c(Class, depth, tri, roughness)) , ntree=501, proximity=TRUE)
 model #  OOB =  41.63%
 model$importance
 model$classes
+model$votes
+model$err.rate
+model$proximity
 
 ptest <- p
 names(ptest)
 #ptest <- dropLayer(p, c(3:7,9))
 
+# predictor stack as df --
+pdf <- as.data.frame(p, xy = T)
+head(pdf)
+
+
+
 ## Predict ----
 
-pred <- raster::predict(ptest, model)
+pred <- raster::predict(ptest, model, type = "response")
+predse <- raster::predict(ptest, model, type = "prob")
+predvote <- raster::predict(ptest, model, type = "vote")
+pvotedf <- as.data.frame(predvote, xy = T)
+
+
+# testing spatial uncertainty predictions
+
+pred2 <- predict(model, pdf, type = 'response')
+pred2
+
+pred3 <- predict(model, pdf, type = 'prob')
+pred4 <- predict(model, pdf, type = 'vote')
+
+
+#pred <- predict(“model”, “predictor pts/raster stack”, type="response") #gives you response predictions
+#pred.se <- predict(“model”, “predictor pts/raster stack”, type="se") #gives you spatial SE predictions
 
 ## Plot ----
 
 plot(pred)
-# fix class levels for plotting --
-xx <-levels(pred)[[1]]
-xx$ID <- c('2','1', '3')
-xx$value <- c('Turf.algae', 'total.seagrass', 'Unconsolidated')
-levels(pred) <- xx
+plot(predse)
+plot(predvote)
 
 
 # basic plot using lattice --
 # https://pjbartlein.github.io/REarthSysSci/rasterVis01.html
 
+# fix class levels for plotting --
+xx <-levels(pred)[[1]]
+xx$ID <- c('2','1', '3')
+xx$value <- c('Turf.algae', 'Seagrasses', 'Unconsolidated')
+levels(pred) <- xx
+
 lp <- levelplot(pred)
 lp
 #class(lp) # trellis
 
-### UP TO HERE ####
 
 
 # Optimising ntree and mtry ----
@@ -253,11 +295,11 @@ lp
 
 oob.error.data <- data.frame(
   Trees=rep(1:nrow(model$err.rate), times=4),
-  Type=rep(c("OOB", 'Turf.algae', 'total.seagrass', 'Unconsolidated'), each=nrow(model$err.rate)),
+  Type=rep(c("OOB", "Turf.algae" ,  "Seagrasses"   ,  "Unconsolidated"), each=nrow(model$err.rate)),
   Error=c(model$err.rate[,"OOB"], 
           model$err.rate[,"Turf.algae"], 
-          model$err.rate[,"total.seagrass"],
-          #model$err.rate[,"Seagrasses"],
+          #model$err.rate[,"Macroalgae"],
+          model$err.rate[,"Seagrasses"],
           model$err.rate[,"Unconsolidated"]))
 
 
@@ -275,17 +317,17 @@ oob.values
 ## find the minimum error
 min(oob.values)
 ## find the optimal value for mtry...
-which(oob.values == min(oob.values))
+which(oob.values == min(oob.values)) # 2, 4
 
 
 
 model <- randomForest(Class ~ ., 
                       #data=train %>%  mutate(Class = car::recode(Class, "'Unconsolidated'='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")),
                       data = train,
-                      ntree=501, 
+                      ntree=751, 
                       proximity=TRUE, 
-                      mtry=which(oob.values == min(oob.values)))
-                      #mtry = 6)
+                      #mtry=which(oob.values == min(oob.values)))
+                      mtry = 4)
 
 model
 
@@ -298,8 +340,11 @@ testp <- raster::predict(ptest, model)
 
 plot(testp)
 
-#e <- drawExtent()
-#testx <- crop(test, e)
+# fix class levels for plotting --
+xx <-levels(testp)[[1]]
+xx$ID <- c('2','1', '3')
+xx$value <- c('Turf.algae', 'Seagrasses', 'Unconsolidated')
+levels(testp) <- xx
 lp <- levelplot(testp)
 lp
 
@@ -317,9 +362,19 @@ caret::confusionMatrix(test$Class,
 
 
 
+# Feature selection using VSURF ----
+
+#t <- train %>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'"))
+t <- train
+TrainData <- t[,c(2:10)]
+TrainClasses <- t[,1]
 
 
-
+rf.def <- VSURF(TrainData, TrainClasses)
+plot(rf.def)
+summary(rf.def) 
+rf.def$varselect.pred # 5 3 1
+head(TrainData) # depth,  slope8, aspect8
 
 
 
@@ -333,9 +388,10 @@ caret::confusionMatrix(test$Class,
 # remove all the Classes that are not SG or MA
 levels(train$Class)
 
-model2 <- randomForest(Class ~ ., data=train %>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'"))
-                         # %>% select(c(Class, depth, tri, roughness)) 
-                       , ntree=501, proximity=TRUE)
+model2 <- randomForest(Class ~ ., data=train 
+                       %>% mutate(Class = car::recode(Class, "'Unconsolidated' ='Unvegetated';'total.seagrass' = 'Seagrass'; 'Turf.algae'='Algae' "))
+                         %>% select(c(Class, depth, slope4, aspect4)) 
+                       , ntree=751, proximity=TRUE, mtry = 2, importance = T)
 #model2 <- randomForest(Class ~ ., data=df2, ntree=501, proximity=T, mtry=3)
 model2 # this is OOB = 56.94%  for 2001 trees / OOB = 56.94% for 501 trees
 model2$importance
@@ -350,7 +406,7 @@ model2$confusion
 # Predict ----
 ptest <- p
 names(ptest)
-#ptest <- dropLayer(p, c(2:6,9))
+ptest <- dropLayer(p, c(3,5:9))
 
 pred <- raster::predict(ptest, model2)
 
@@ -359,28 +415,98 @@ pred <- raster::predict(ptest, model2)
 plot(pred)
 pred
 # fix class levels for plotting --
-xx <-levels(pred)[[1]]
-xx$ID <- c('1','3', '2')
-xx$value <- c('Hard', 'Seagrass', 'Sand')
-levels(pred) <- xx
+#xx <-levels(pred)[[1]]
+#xx$ID <- c('2','1', '3')
+#xx$value <- c('Algae', 'Seagrasses', 'Unconsolidated')
+#levels(pred) <- xx
 
 # Basic plot using lattice --
 lp <- levelplot(pred)
 lp
+
+##  plot ----
+
+plot(pred)
+#e <- drawExtent()
+#e <- extent(115.1187, 115.5686 , -33.6169, -33.32534)
+#testx <- crop(pred, e)
+testx <- pred
+
+# basic plot using lattice --
+# https://pjbartlein.github.io/REarthSysSci/rasterVis01.html
+# https://stat.ethz.ch/pipermail/r-sig-geo/2013-March/017893.html
+
+#pick colors --
+sg <- brocolors("crayons")["Jungle Green"] # "#78dbe2"
+sg <- brocolors("crayons")["Forest Green"] # "#78dbe2"
+sg <- brocolors("crayons")["Fern"] # "#78dbe2"
+alg <-  brocolors("crayons")["Raw Umber"] # "#1dacd6" 
+sand <-  brocolors("crayons")["Unmellow Yellow"] # "#f75394"
+
+# read gb cmr
+gb <- readOGR(dsn="C:/Users/00093391/Dropbox/UWA/Research Associate/PowAnalysis_for1sParksMeeting/Desktop/shapefiles")
+plot(gb)
+
+
+lp <- levelplot(testx, col.regions=c(alg, sg, sand))
+lp
+class(lp) # trellis
+
+# https://oscarperpinan.github.io/rastervis/FAQ.html
+
+# plot without CMR--
+lp2 <- levelplot(testx, col.regions=c(alg, sg, sand), xlab = list("Longitude", fontface = "bold"),
+                 
+                 ylab = list("Latitude", fontface = "bold"))
+lp2
+trellis.device(device ="png", filename = paste(p.dir, "DTV-Coarse.png", sep='/'), width = 1000, height = 670, res = 200)
+print(lp2)
+dev.off()
+
+# with the CMR polygon
+lp3 <- levelplot(testx, col.regions=c(alg, sg, sand), xlab = list("Longitude", fontface = "bold"),
+                 ylab = list("Latitude", fontface = "bold")) + layer(sp.polygons(gb))
+lp3
+#print(lp2)
+trellis.device(device ="png", filename = paste(p.dir, "DTV-Coarse-CMR.png", sep='/'), width = 1000, height = 670, res = 200)
+print(lp3)
+dev.off()
+
+
+
+#### Validation  model 2  ----
+
+# model 2
+
+#prediction_for_table <- raster::predict(model6, test[,-c(1,4:8,10)]
+
+prediction_for_table2 <- raster::predict(model2, test %>% 
+                                           mutate(Class = car::recode(Class, "'Unconsolidated' ='Unvegetated';'total.seagrass' = 'Seagrass'; 'Turf.algae'='Algae' ")) %>%
+                                           select(c(Class, depth, aspect4, slope4)))
+#table(observed=test[,-c(2:10)],  predicted=prediction_for_table)
+
+table(observed=test$Class %>%
+        car::recode("'Unconsolidated' ='Unvegetated';'total.seagrass' = 'Seagrass'; 'Turf.algae'='Algae' "),
+      predicted=prediction_for_table2)
+
+# confusion matrix model 2 ----
+caret::confusionMatrix(test$Class %>%
+                         car::recode("'Unconsolidated' ='Unvegetated';'total.seagrass' = 'Seagrass'; 'Turf.algae'='Algae' "),
+                       prediction_for_table2)
 
 
 
 # Validation ----
 
 prediction_for_table2 <- predict(model2, test 
-                                  %>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'"))
+                                  # %>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'"))
 )
 # %>%
 # select(c(Class, depth, slope4, roughness)))
 
-caret::confusionMatrix(test$Class 
+caret::confusionMatrix(test$Class, 
                        #%>% mutate(Class = car::recode(Class, "'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'"),
-                       %>% car::recode("'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'"),
+                       #%>% car::recode("'Seagrasses' = 'Seagrass'; c('Consolidated', 'Macroalgae')='Hard'; 'Unconsolidated' ='Sand'"),
                        prediction_for_table2)
 
 
@@ -444,6 +570,9 @@ head(TrainData) # depth,  slope4
 
 
 
+
+
+### UP to here w towed Video ----
 
 
 
@@ -511,100 +640,33 @@ caret::confusionMatrix(test3$Class,
 # Using all preds 
 # to manipulate factors: https://stackoverflow.com/questions/35088812/combine-sets-of-factors-in-a-dataframe-with-dplyr
 
-model4 <- randomForest(Class ~ ., data=train %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Macroalgae')='Algae'")) %>%
-                         select(Class, depth, aspect4, tri, tpi), 
-                       ntree=1001, proximity=TRUE, mtry = 3, importance = T)
-model4 #  OOB =  15.87%
+model4 <- randomForest(Class ~ ., data=train %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")), 
+                       ntree=1001, proximity=TRUE, mtry = 3)
+model4 #  OOB = 53.21%
 model4$importance
 
 # Remove predictors if needed --
-ptest <- p
-names(ptest)
-ptest <- dropLayer(p, c(2,3,5,8,9))
-names(ptest)
+#ptest <- p
+#names(ptest)
+#ptest <- dropLayer(p, c(9))
 
 ## Predict ----
 
-pred <- raster::predict(ptest, model4)
+pred <- raster::predict(p, model4)
 
 ## Plot ----
 
 plot(pred)
-#e <- drawExtent()
-#testx <- crop(pred, e)
-testx <- pred
+e <- drawExtent()
+testx <- crop(pred, e)
 plot(testx)
-
-##  plot ----
-
-plot(pred)
-#e <- drawExtent()
-#e <- extent(115.1187, 115.5686 , -33.6169, -33.32534)
-#testx <- crop(pred, e)
-testx <- pred
 
 # basic plot using lattice --
 # https://pjbartlein.github.io/REarthSysSci/rasterVis01.html
-# https://stat.ethz.ch/pipermail/r-sig-geo/2013-March/017893.html
 
-#pick colors --
-sg <- brocolors("crayons")["Jungle Green"] # "#78dbe2"
-sg <- brocolors("crayons")["Forest Green"] # "#78dbe2"
-sg <- brocolors("crayons")["Fern"] # "#78dbe2"
-alg <-  brocolors("crayons")["Raw Umber"] # "#1dacd6" 
-sand <-  brocolors("crayons")["Unmellow Yellow"] # "#f75394"
-
-# read gb cmr
-gb <- readOGR(dsn="C:/Users/00093391/Dropbox/UWA/Research Associate/PowAnalysis_for1sParksMeeting/Desktop/shapefiles")
-plot(gb)
-
-
-lp <- levelplot(testx, col.regions=c(alg, sg, sand))
+lp <- levelplot(testx)
 lp
-class(lp) # trellis
-
-# https://oscarperpinan.github.io/rastervis/FAQ.html
-
-# plot without CMR--
-lp2 <- levelplot(testx, col.regions=c(alg, sg, sand), xlab = list("Longitude", fontface = "bold"),
-                 
-                 ylab = list("Latitude", fontface = "bold"))
-lp2
-trellis.device(device ="png", filename = paste(p.dir, "AUV-Coarse.png", sep='/'), width = 1000, height = 670, res = 200)
-print(lp2)
-dev.off()
-
-# with the CMR polygon
-lp3 <- levelplot(testx, col.regions=c(alg, sg, sand), xlab = list("Longitude", fontface = "bold"),
-                 ylab = list("Latitude", fontface = "bold")) + layer(sp.polygons(gb))
-lp3
-#print(lp2)
-trellis.device(device ="png", filename = paste(p.dir, "AUV-Coarse-CMR.png", sep='/'), width = 1000, height = 670, res = 200)
-print(lp3)
-dev.off()
-
-
-
-#### Validation  model 4  ----
-
-# model 4
-
-#prediction_for_table <- raster::predict(model6, test[,-c(1,4:8,10)])
-prediction_for_table4 <- raster::predict(model4, test %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Macroalgae')='Algae'")) %>%
-                                           select(c(Class, depth, aspect4, tri, tpi)))
-#table(observed=test[,-c(2:10)],  predicted=prediction_for_table)
-
-table(observed=test$Class %>%
-        car::recode("c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Macroalgae')='Algae'"),
-      predicted=prediction_for_table4)
-
-# confusion matrix model 6 ----
-caret::confusionMatrix(test$Class %>%
-                         car::recode("c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Macroalgae')='Algae'"),
-                       prediction_for_table4)
-
-
-
+#class(lp) # trellis
 
 
 ### MODEL 5 ----
@@ -796,12 +858,12 @@ lp2
 
 
 
-#### Validation  model 4  ----
+#### Validation  model 6 and 8: looking at confusion matrix ----
 
-# model 4
+# model 6
 
 #prediction_for_table <- raster::predict(model6, test[,-c(1,4:8,10)])
-prediction_for_table4 <- raster::predict(model4, test %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae')='Algae'")) %>%
+prediction_for_table6 <- raster::predict(model6, test %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")) %>%
                                           select(c(Class, depth, aspect4, tri, tpi)))
 #table(observed=test[,-c(2:10)],  predicted=prediction_for_table)
 
