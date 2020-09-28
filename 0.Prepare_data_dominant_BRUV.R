@@ -3,7 +3,7 @@
 ############ Prepare data for RF ################
 
 ### Load libraries --
-predict
+
 library(ggplot2)
 library(cowplot)
 library(sp)

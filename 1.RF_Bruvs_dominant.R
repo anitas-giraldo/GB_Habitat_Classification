@@ -31,6 +31,7 @@ library(gstat)
 install.packages("corrplot")
 library(corrplot)
 library(broman)
+library(VSURF)
 
 # Clear memory ----
 rm(list=ls())
@@ -336,7 +337,7 @@ lp
 class(lp) # trellis
 
 
-### MODEL 6 ----
+### MODEL 6 and 7 ----
 ### RF - 3 habitat classes : unvegetated, seagrass, macroalgae ---
 # Using all preds 
 # to manipulate factors: https://stackoverflow.com/questions/35088812/combine-sets-of-factors-in-a-dataframe-with-dplyr
@@ -400,7 +401,8 @@ test2 <- raster::predict(ptest, model7)
 ## Plot ----
 
 plot(test)
-e <- drawExtent()
+#e <- drawExtent()
+e <- extent(115.1187, 115.5686 , -33.6169, -33.32534)
 testx <- crop(test, e)
 plot(testx)
 
@@ -425,16 +427,16 @@ gb <- readOGR(dsn="C:/Users/00093391/Dropbox/UWA/Research Associate/PowAnalysis_
 plot(gb)
 
 
-lp <- levelplot(test, col.regions=c(alg, sg, sand))
+lp <- levelplot(testx, col.regions=c(alg, sg, sand))
 lp
 class(lp) # trellis
 
 # https://oscarperpinan.github.io/rastervis/FAQ.html
-lp2 <- levelplot(test2, col.regions=c(alg, sg, sand), xlab = list("Longitude", fontface = "bold"),
+lp2 <- levelplot(testx, col.regions=c(alg, sg, sand), xlab = list("Longitude", fontface = "bold"),
                  ylab = list("Latitude", fontface = "bold"))
 # with the gb polygon
-#lp2 <- levelplot(test2, col.regions=c(alg, sg, sand), xlab = list("Longitude", fontface = "bold"),
-#                 ylab = list("Latitude", fontface = "bold")) + layer(sp.polygons(gb))
+lp2 <- levelplot(testx, col.regions=c(alg, sg, sand), xlab = list("Longitude", fontface = "bold"),
+              ylab = list("Latitude", fontface = "bold")) + layer(sp.polygons(gb))
 lp2
 #print(lp2)
 trellis.device(device ="png", filename = paste(p.dir, "Bruv-fine.png", sep='/'), width = 1000, height = 670, res = 200)
@@ -443,9 +445,163 @@ dev.off()
 
 
 
+#### Model 8 #### 
+
+model8 <- randomForest(Class ~ ., data=train %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")) %>%
+                         select(c(Class, depth, slope4, aspect4, tpi, flowdir)), 
+                       ntree=2001, proximity=TRUE, mtry = 3, importance=TRUE)
+model8 #  OOB = 58.72%
+model8$importance
+varImpPlot(model8)
+
+
+### Model 9 #### 
+model9 <- randomForest(Class ~ ., data=train %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")) %>%
+                         select(c(Class, depth, roughness, aspect4, tpi, flowdir)), 
+                       ntree=2001, proximity=TRUE, mtry = 3, importance=TRUE)
+model9 #  OOB =  55.05%
+model9$importance
+varImpPlot(model9)
+
+### Model 10 #### 
+model10 <- randomForest(Class ~ ., data=train %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")) %>%
+                         select(c(Class, depth, tri, aspect4, tpi, flowdir)), 
+                       ntree=2001, proximity=TRUE, mtry = 3, importance=TRUE)
+model10 #  OOB =   54.13%
+model10$importance
+varImpPlot(model10)
+
+
+### Model 11 #### 
+model11 <- randomForest(Class ~ ., data=train %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")) %>%
+                          select(c(Class, depth, tri, aspect4, tpi)), 
+                        ntree=2001, proximity=TRUE, mtry = 3, importance=TRUE)
+model11 #  OOB =   50.46%
+model11$importance
+varImpPlot(model11)
 
 
 
+# predict ----
+
+# Remove predictors if needed --
+ptest <- p
+names(p)
+ptest <- dropLayer(p, c(2,3,5,8,9))
+names(ptest)
+
+
+pred.m11 <- raster::predict(ptest, model11)
+
+
+#  plot ----
+
+plot(pred.m11)
+#e <- drawExtent()
+e <- extent(115.1187, 115.5686 , -33.6169, -33.32534)
+testx <- crop(pred.m11, e)
+plot(testx)
+
+# basic plot using lattice --
+# https://pjbartlein.github.io/REarthSysSci/rasterVis01.html
+# https://stat.ethz.ch/pipermail/r-sig-geo/2013-March/017893.html
+
+#pick colors --
+sg <- brocolors("crayons")["Jungle Green"] # "#78dbe2"
+sg <- brocolors("crayons")["Forest Green"] # "#78dbe2"
+sg <- brocolors("crayons")["Fern"] # "#78dbe2"
+alg <-  brocolors("crayons")["Raw Umber"] # "#1dacd6" 
+sand <-  brocolors("crayons")["Unmellow Yellow"] # "#f75394"
+
+# read gb cmr
+gb <- readOGR(dsn="C:/Users/00093391/Dropbox/UWA/Research Associate/PowAnalysis_for1sParksMeeting/Desktop/shapefiles")
+plot(gb)
+
+
+lp <- levelplot(testx, col.regions=c(alg, sg, sand))
+lp
+class(lp) # trellis
+
+# https://oscarperpinan.github.io/rastervis/FAQ.html
+
+# plot without CMR--
+lp2 <- levelplot(testx, col.regions=c(alg, sg, sand), xlab = list("Longitude", fontface = "bold"),
+ 
+                                 ylab = list("Latitude", fontface = "bold"))
+# with the CMR polygon
+lp2 <- levelplot(testx, col.regions=c(alg, sg, sand), xlab = list("Longitude", fontface = "bold"),
+                 ylab = list("Latitude", fontface = "bold")) + layer(sp.polygons(gb))
+lp2
+#print(lp2)
+trellis.device(device ="png", filename = paste(p.dir, "Bruv-fine-CMR.png", sep='/'), width = 1000, height = 670, res = 200)
+print(lp2)
+dev.off()
+
+
+
+
+### Model 12 #### 
+model12 <- randomForest(Class ~ ., data=train %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")) %>%
+                          select(c(Class, tri)), 
+                        ntree=2001, proximity=TRUE,  importance=TRUE)
+model12 #  OOB =   51.38%
+model12$importance
+varImpPlot(model12)
+
+# predict ----
+
+# Remove predictors if needed --
+ptest <- p
+names(p)
+ptest <- dropLayer(p, c(1:6,8,9))
+names(ptest)
+
+
+pred.m12 <- raster::predict(ptest, model12)
+
+
+#  plot ----
+
+plot(pred.m12)
+#e <- drawExtent()
+e <- extent(115.1187, 115.5686 , -33.6169, -33.32534)
+testx <- crop(pred.m12, e)
+plot(testx)
+
+# basic plot using lattice --
+# https://pjbartlein.github.io/REarthSysSci/rasterVis01.html
+# https://stat.ethz.ch/pipermail/r-sig-geo/2013-March/017893.html
+
+#pick colors --
+sg <- brocolors("crayons")["Jungle Green"] # "#78dbe2"
+sg <- brocolors("crayons")["Forest Green"] # "#78dbe2"
+sg <- brocolors("crayons")["Fern"] # "#78dbe2"
+alg <-  brocolors("crayons")["Raw Umber"] # "#1dacd6" 
+sand <-  brocolors("crayons")["Unmellow Yellow"] # "#f75394"
+
+# read gb cmr
+gb <- readOGR(dsn="C:/Users/00093391/Dropbox/UWA/Research Associate/PowAnalysis_for1sParksMeeting/Desktop/shapefiles")
+plot(gb)
+
+
+lp <- levelplot(testx, col.regions=c(alg, sg, sand))
+lp
+class(lp) # trellis
+
+# https://oscarperpinan.github.io/rastervis/FAQ.html
+
+# plot without CMR--
+lp2 <- levelplot(testx, col.regions=c(alg, sg, sand), xlab = list("Longitude", fontface = "bold"),
+                 
+                 ylab = list("Latitude", fontface = "bold"))
+# with the CMR polygon
+lp2 <- levelplot(testx, col.regions=c(alg, sg, sand), xlab = list("Longitude", fontface = "bold"),
+                 ylab = list("Latitude", fontface = "bold")) + layer(sp.polygons(gb))
+lp2
+#print(lp2)
+trellis.device(device ="png", filename = paste(p.dir, "Bruv-fine-CMR.png", sep='/'), width = 1000, height = 670, res = 200)
+print(lp2)
+dev.off()
 
 
 
@@ -454,8 +610,8 @@ dev.off()
 #### Validation set assessment model 6: looking at confusion matrix ----
 
 #prediction_for_table <- raster::predict(model6, test[,-c(1,4:8,10)])
-prediction_for_table6 <- raster::predict(model6, test %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")) %>%
-                                          select(c(Class, depth, slope4, roughness)))
+prediction_for_table6 <- raster::predict(model11, test %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")) %>%
+                                          select(c(Class, depth, aspect4, tpi, tri)))
 #table(observed=test[,-c(2:10)],  predicted=prediction_for_table)
 
 table(observed=test$Class %>%
@@ -477,9 +633,9 @@ library(ROCR)
 
 # Calculate the probability of new observations belonging to each class
 # prediction_for_roc_curve will be a matrix with dimensions data_set_size x number_of_classes
-prediction_for_roc_curve <- predict(model6,
+prediction_for_roc_curve <- predict(model11,
                                     test %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")) %>%
-                                      select(c(Class, depth, slope4, roughness)),
+                                      select(c(Class, depth, aspect4, tpi, tri)),
                                     type="prob")
 
 # Plot ROC curve ----
@@ -523,7 +679,7 @@ caret::confusionMatrix(test$Class %>%
 
 #   #   #   #     #     #     #     #
 
-####        VARIOGRAM       ######
+####        VARIOGRAM       ###### this hasn't work yet
 # https://stats.idre.ucla.edu/r/faq/how-do-i-generate-a-variogram-for-spatial-data-in-r/
 # https://www.aspexit.com/en/implementing-variograms-in-r/
 # https://cran.r-project.org/web/packages/elsa/vignettes/elsa.html
@@ -565,3 +721,24 @@ v.fit <- fit.variogram(variog1, vgm("Exp"))
 
 
 v <- variog(df2, max.dist = 0.5)
+
+
+
+
+
+### # Feature selection using VSURF ----
+train
+
+t <- train %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"))
+head(t)
+
+TrainData <- t[,c(2:10)]
+TrainClasses <- t[,1]
+
+
+rf.def <- VSURF(TrainData, TrainClasses)
+plot(rf.def)
+summary(rf.def) 
+rf.def$varselect.pred # [1] 7 : TRI
+rf.def$varselect.thres 
+head(TrainData) # 7 : TRI

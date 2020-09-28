@@ -26,16 +26,22 @@ library(fields)
 library(ROCR)
 library(caret)
 library(VSURF)
+library(geoR)
+library(gstat)
+#library(elsa)
+install.packages("corrplot")
+library(corrplot)
+library(broman)
 
 # Clear memory ----
 rm(list=ls())
 
 ### Set directories ----
-w.dir <- "Y:/GB_Habitat_Classification"
-d.dir <- "Y:/GB_Habitat_Classification/data"
-s.dir <- "Y:/GB_Habitat_Classification/spatial_data"
-p.dir <- "Y:/GB_Habitat_Classification/plots"
-o.dir <- "Y:/GB_Habitat_Classification/outputs"
+w.dir<- dirname(rstudioapi::getActiveDocumentContext()$path)
+d.dir <- paste(w.dir, "data", sep='/')
+s.dir <- paste(w.dir, "spatial_data", sep='/')
+p.dir <- paste(w.dir, "plots", sep='/')
+o.dir <- paste(w.dir, "outputs", sep='/')
 
 
 ### Load data ----
@@ -50,7 +56,17 @@ namesp <- read.csv(paste(s.dir, "namespredictors.csv", sep='/'))
 namesp
 names(p) <- namesp[,2]
 names(p)
-plot(p)
+plot(p$depth)
+
+
+# read gb cmr
+gb <- readOGR(dsn="C:/Users/00093391/Dropbox/UWA/Research Associate/PowAnalysis_for1sParksMeeting/Desktop/shapefiles")
+plot(gb, add=T)
+
+p <- mask(p,gb)
+
+plot(p$depth)
+plot(gb, add=T)
 
 ## Prepare data ----
 
@@ -85,6 +101,61 @@ scatterplotMatrix(df2[2:10], col = df2$Class)
 plot(df2[2:10], col = df2$Class)
 legend("center", 
        legend = levels(df2$Class))
+
+
+
+## using corrplot ----
+
+# compute correlation matrix --
+C <- cor(df2[2:10], method = "pearson")
+head(round(C,2))
+
+# correlogram : visualizing the correlation matrix --
+# http://www.sthda.com/english/wiki/visualize-correlation-matrix-using-correlogram#:~:text=Correlogram%20is%20a%20graph%20of%20correlation%20matrix.&text=In%20this%20plot%2C%20correlation%20coefficients,corrplot%20package%20is%20used%20here.
+#Positive correlations are displayed in blue and negative correlations in red color. 
+#Color intensity and the size of the circle are proportional to the correlation coefficients
+corrplot(C, method="circle")
+corrplot(C, method="pie")
+corrplot(C, method="color")
+corrplot(C, method="number", type = "upper")
+corrplot(C, method="color", type = "lower", order="hclust") #  “hclust” for hierarchical clustering order is used in the following examples
+
+# compute the p-value of correlations --
+# mat : is a matrix of data
+# ... : further arguments to pass to the native R cor.test function
+cor.mtest <- function(mat, ...) {
+  mat <- as.matrix(mat)
+  n <- ncol(mat)
+  p.mat<- matrix(NA, n, n)
+  diag(p.mat) <- 0
+  for (i in 1:(n - 1)) {
+    for (j in (i + 1):n) {
+      tmp <- cor.test(mat[, i], mat[, j], ...)
+      p.mat[i, j] <- p.mat[j, i] <- tmp$p.value
+    }
+  }
+  colnames(p.mat) <- rownames(p.mat) <- colnames(mat)
+  p.mat
+}
+# matrix of the p-value of the correlation
+p.mat <- cor.mtest(df2[2:10])
+head(p.mat[, 1:5])
+
+# customize correlogram --
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+corrplot(C, method="color", col=col(100),  
+         type="upper", order="hclust", 
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col="black", tl.srt=45, #Text label color and rotation
+         # Combine with significance
+         p.mat = p.mat, sig.level = 0.01, insig = "blank", 
+         # hide correlation coefficient on the principal diagonal
+         diag=FALSE 
+)
+
+
+
+
 
 ### Check Predicitor correlations ---
 
@@ -276,7 +347,7 @@ head(TrainData) # depth, tri, aspect4, slope4, tpi
 levels(df2$Class)
 
 model2 <- randomForest(Class ~ ., data=train %>%  mutate(Class = car::recode(Class, "'Unconsolidated'='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"))
-                       %>% select(c(Class, depth, aspect4, tpi)) 
+                       %>% select(c(Class, depth, slope4, tpi)) 
                        , ntree=1001, mtry=3, proximity=TRUE)
 model2 # this is OOB = 56.94%  for 2001 trees / OOB = 56.94% for 501 trees
 model2$importance
@@ -349,12 +420,9 @@ which(oob.values == min(oob.values))
 # Like model two with optimized mtry and ntree --
 
 
-model3 <- randomForest(Class ~ ., 
-                      data=train %>%  mutate(Class = car::recode(Class, "'Unconsolidated'='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"))
-                      %>% select(c(Class, depth, aspect4, tpi)),
-                      ntree=1001, 
-                      proximity=TRUE, 
-                      mtry=which(oob.values == min(oob.values)))
+model3 <- randomForest(Class ~ ., data=train %>%  mutate(Class = car::recode(Class, "'Unconsolidated'='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"))
+                       %>% select(c(Class, depth, aspect4, tpi)) 
+                       , ntree=1001, mtry=2, proximity=TRUE, importance = TRUE)
 
 model3
 model3$importance
@@ -364,14 +432,55 @@ model3$importance
 names(p)
 ptest <- dropLayer(p, c(2,3,5,7:9))
 names(ptest)
-testp <- raster::predict(ptest, model3)
+pred <- raster::predict(ptest, model3)
 
-plot(testp)
-testx <- testp
-plot(testx)
-# Basic plot using lattice --
-lp <- levelplot(testx)
+#  plot ----
+
+plot(pred)
+#e <- drawExtent()
+#e <- extent(115.1187, 115.5686 , -33.6169, -33.32534)
+#testx <- crop(pred, e)
+testx <- pred
+
+# basic plot using lattice --
+# https://pjbartlein.github.io/REarthSysSci/rasterVis01.html
+# https://stat.ethz.ch/pipermail/r-sig-geo/2013-March/017893.html
+
+#pick colors --
+sg <- brocolors("crayons")["Jungle Green"] # "#78dbe2"
+sg <- brocolors("crayons")["Forest Green"] # "#78dbe2"
+sg <- brocolors("crayons")["Fern"] # "#78dbe2"
+alg <-  brocolors("crayons")["Raw Umber"] # "#1dacd6" 
+sand <-  brocolors("crayons")["Unmellow Yellow"] # "#f75394"
+
+# read gb cmr
+gb <- readOGR(dsn="C:/Users/00093391/Dropbox/UWA/Research Associate/PowAnalysis_for1sParksMeeting/Desktop/shapefiles")
+plot(gb)
+
+
+lp <- levelplot(testx, col.regions=c(alg, sg, sand))
 lp
+class(lp) # trellis
+
+# https://oscarperpinan.github.io/rastervis/FAQ.html
+
+# plot without CMR--
+lp2 <- levelplot(testx, col.regions=c(alg, sg, sand), xlab = list("Longitude", fontface = "bold"),
+                 
+                 ylab = list("Latitude", fontface = "bold"))
+lp2
+trellis.device(device ="png", filename = paste(p.dir, "BRUV-Coarse.png", sep='/'), width = 1000, height = 670, res = 200)
+print(lp2)
+dev.off()
+
+# with the CMR polygon
+lp3 <- levelplot(testx, col.regions=c(alg, sg, sand), xlab = list("Longitude", fontface = "bold"),
+                 ylab = list("Latitude", fontface = "bold")) + layer(sp.polygons(gb))
+lp3
+#print(lp2)
+trellis.device(device ="png", filename = paste(p.dir, "BRUV-Coarse-CMR.png", sep='/'), width = 1000, height = 670, res = 200)
+print(lp3)
+dev.off()
 
 # Validation ----
 

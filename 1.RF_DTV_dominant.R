@@ -26,6 +26,13 @@ library(sf)
 library(fields)
 library(ROCR)
 library(caret)
+library(geoR)
+library(gstat)
+#library(elsa)
+install.packages("corrplot")
+library(corrplot)
+library(broman)
+library(VSURF)
 
 # Clear memory ----
 rm(list=ls())
@@ -80,6 +87,61 @@ plot(df2[2:10], col = df2$Class)
 legend("center", 
        legend = levels(df2$Class))
 
+
+
+## using corrplot ----
+
+# compute correlation matrix --
+C <- cor(df2[2:10], method = "pearson")
+head(round(C,2))
+
+# correlogram : visualizing the correlation matrix --
+# http://www.sthda.com/english/wiki/visualize-correlation-matrix-using-correlogram#:~:text=Correlogram%20is%20a%20graph%20of%20correlation%20matrix.&text=In%20this%20plot%2C%20correlation%20coefficients,corrplot%20package%20is%20used%20here.
+#Positive correlations are displayed in blue and negative correlations in red color. 
+#Color intensity and the size of the circle are proportional to the correlation coefficients
+corrplot(C, method="circle")
+corrplot(C, method="pie")
+corrplot(C, method="color")
+corrplot(C, method="number", type = "upper")
+corrplot(C, method="color", type = "lower", order="hclust") #  “hclust” for hierarchical clustering order is used in the following examples
+
+# compute the p-value of correlations --
+# mat : is a matrix of data
+# ... : further arguments to pass to the native R cor.test function
+cor.mtest <- function(mat, ...) {
+  mat <- as.matrix(mat)
+  n <- ncol(mat)
+  p.mat<- matrix(NA, n, n)
+  diag(p.mat) <- 0
+  for (i in 1:(n - 1)) {
+    for (j in (i + 1):n) {
+      tmp <- cor.test(mat[, i], mat[, j], ...)
+      p.mat[i, j] <- p.mat[j, i] <- tmp$p.value
+    }
+  }
+  colnames(p.mat) <- rownames(p.mat) <- colnames(mat)
+  p.mat
+}
+# matrix of the p-value of the correlation
+p.mat <- cor.mtest(df2[2:10])
+head(p.mat[, 1:5])
+
+# customize correlogram --
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+corrplot(C, method="color", col=col(100),  
+         type="upper", order="hclust", 
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col="black", tl.srt=45, #Text label color and rotation
+         # Combine with significance
+         p.mat = p.mat, sig.level = 0.01, insig = "blank", 
+         # hide correlation coefficient on the principal diagonal
+         diag=FALSE 
+)
+
+
+
+
+
 ### Check Predicitor correlations ---
 
 # define function mosthighlycorrelated --
@@ -123,7 +185,7 @@ test  <-subset(df2, sample == FALSE)
 dim(train) # [1]  1997   10
 dim(test) # [1] 666  10
 
-
+levels(train$Class) # "Consolidated"   "Macroalgae"     "total.seagrass" "Turf.algae"     "Unconsolidated"
 
 # remove classes if needed classes ----
 
@@ -184,8 +246,8 @@ lp
 # remove all the Classes that are not SG or MA
 levels(train$Class)
 model2 <- randomForest(Class ~ ., data=train %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'total.seagrass' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")) %>%
-                         select(c(Class, depth, aspect4, slope4)), 
-                      ntree=1001, proximity=TRUE, mtry = 3)
+                         select(c(Class, depth, aspect4, roughness, tpi)), 
+                      ntree=1001, proximity=TRUE, mtry = 3, importance = TRUE)
 #model2 <- randomForest(Class ~ ., data=train %>% select(c(Class, depth, tri, roughness)) , ntree=501, proximity=TRUE)
 #model2 <- randomForest(Class ~ ., data=df2, ntree=501, proximity=T, mtry=3)
 model2 # this is OOB = 56.94%  for 2001 trees / OOB = 56.94% for 501 trees
@@ -194,20 +256,59 @@ model2$importance
 # Predict ----
 ptest <- p
 names(ptest)
-ptest <- dropLayer(p, c(3,5:9))
+ptest <- dropLayer(p, c(2,3,5,7,9))
+names(ptest)
 
 pred <- raster::predict(ptest, model2)
 
-# plot ----
-plot(pred)
+#  plot ----
 
+plot(pred)
 #e <- drawExtent()
+e <- extent(115.1187, 115.5686 , -33.6169, -33.32534)
 testx <- crop(pred, e)
 plot(testx)
 
-# Basic plot using lattice --
-lp <- levelplot(testx)
+# basic plot using lattice --
+# https://pjbartlein.github.io/REarthSysSci/rasterVis01.html
+# https://stat.ethz.ch/pipermail/r-sig-geo/2013-March/017893.html
+
+#pick colors --
+sg <- brocolors("crayons")["Jungle Green"] # "#78dbe2"
+sg <- brocolors("crayons")["Forest Green"] # "#78dbe2"
+sg <- brocolors("crayons")["Fern"] # "#78dbe2"
+alg <-  brocolors("crayons")["Raw Umber"] # "#1dacd6" 
+sand <-  brocolors("crayons")["Unmellow Yellow"] # "#f75394"
+
+# read gb cmr
+gb <- readOGR(dsn="C:/Users/00093391/Dropbox/UWA/Research Associate/PowAnalysis_for1sParksMeeting/Desktop/shapefiles")
+plot(gb)
+
+
+lp <- levelplot(testx, col.regions=c(alg, sg, sand))
 lp
+class(lp) # trellis
+
+# https://oscarperpinan.github.io/rastervis/FAQ.html
+
+# plot without CMR--
+lp2 <- levelplot(testx, col.regions=c(alg, sg, sand), xlab = list("Longitude", fontface = "bold"),
+                 
+                 ylab = list("Latitude", fontface = "bold"))
+lp2
+trellis.device(device ="png", filename = paste(p.dir, "DTV-fine.png", sep='/'), width = 1000, height = 670, res = 200)
+print(lp2)
+dev.off()
+
+# with the CMR polygon
+lp3 <- levelplot(testx, col.regions=c(alg, sg, sand), xlab = list("Longitude", fontface = "bold"),
+                 ylab = list("Latitude", fontface = "bold")) + layer(sp.polygons(gb))
+lp3
+#print(lp2)
+trellis.device(device ="png", filename = paste(p.dir, "DTV-fine-CMR.png", sep='/'), width = 1000, height = 670, res = 200)
+print(lp3)
+dev.off()
+
 
 
 ### UP TO HERE ####
@@ -469,23 +570,23 @@ lp2
 
 
 
-#### Validation  model 6 and 8: looking at confusion matrix ----
+#### Validation  model 2: looking at confusion matrix ----
 
 # model 6
 
 #prediction_for_table <- raster::predict(model6, test[,-c(1,4:8,10)])
-prediction_for_table6 <- raster::predict(model6, test %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")) %>%
-                                          select(c(Class, depth, aspect4, tri, tpi)))
+prediction_for_table2 <- raster::predict(model2, test %>% mutate(Class = car::recode(Class, "c('Unconsolidated', 'Consolidated')='Unvegetated';'total.seagrass' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'")) %>%
+                                          select(c(Class, depth, aspect4,tpi, roughness)))
 #table(observed=test[,-c(2:10)],  predicted=prediction_for_table)
 
 table(observed=test$Class %>%
-        car::recode("c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"),
-      predicted=prediction_for_table6)
+        car::recode("c('Unconsolidated', 'Consolidated')='Unvegetated';'total.seagrass' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"),
+      predicted=prediction_for_table2)
 
-# confusion matrix model 6 ----
+# confusion matrix model 2 ----
 caret::confusionMatrix(test$Class %>%
-                         car::recode("c('Unconsolidated', 'Consolidated')='Unvegetated';'Seagrasses' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"),
-                       prediction_for_table6)
+                         car::recode("c('Unconsolidated', 'Consolidated')='Unvegetated';'total.seagrass' = 'Seagrass'; c('Turf.algae','Macroalgae')='Algae'"),
+                       prediction_for_table2)
 
 
 
