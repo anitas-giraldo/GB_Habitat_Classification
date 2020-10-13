@@ -192,7 +192,7 @@ b <- bplot(train$aspect8, train$Class)
 plot(b)
 
 ### Get train and test data ----
-
+set.seed(777)
 sample <- sample.split(df2$flowdir, SplitRatio = 0.75)
 train <- subset(df2, sample == TRUE)
 test  <-subset(df2, sample == FALSE)
@@ -442,13 +442,18 @@ plot(pred)
 #testx <- crop(pred, e)
 testx <- pred
 
+
+# save prediction ---
+writeRaster(testx, paste(o.dir, "GBpred-Coarse-Bruvs.tif", sep='/'))
+
+
 # basic plot using lattice --
 # https://pjbartlein.github.io/REarthSysSci/rasterVis01.html
 # https://stat.ethz.ch/pipermail/r-sig-geo/2013-March/017893.html
 
 #pick colors --
-sg <- brocolors("crayons")["Jungle Green"] # "#78dbe2"
-sg <- brocolors("crayons")["Forest Green"] # "#78dbe2"
+#sg <- brocolors("crayons")["Jungle Green"] # "#78dbe2"
+#sg <- brocolors("crayons")["Forest Green"] # "#78dbe2"
 sg <- brocolors("crayons")["Fern"] # "#78dbe2"
 alg <-  brocolors("crayons")["Raw Umber"] # "#1dacd6" 
 sand <-  brocolors("crayons")["Unmellow Yellow"] # "#f75394"

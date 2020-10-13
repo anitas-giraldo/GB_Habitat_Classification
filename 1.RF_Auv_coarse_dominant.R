@@ -185,7 +185,7 @@ mosthighlycorrelated(df2[2:10], 10) # This results in only depth, rough and slop
 
 
 ### Get train and test data ----
-
+set.seed(777)
 sample <- caTools::sample.split(df2$flowdir, SplitRatio = 0.75)
 train <- subset(df2, sample == TRUE)
 test  <-subset(df2, sample == FALSE)
@@ -535,6 +535,12 @@ plot(pred)
 testx <- pred
 plot(testx)
 
+
+
+# save prediction ----
+writeRaster(testx, paste(o.dir, "GBpred-Coarse-AUV.tif", sep='/'))
+
+
 ##  plot ----
 
 plot(pred)
@@ -548,8 +554,8 @@ testx <- pred
 # https://stat.ethz.ch/pipermail/r-sig-geo/2013-March/017893.html
 
 #pick colors --
-sg <- brocolors("crayons")["Jungle Green"] # "#78dbe2"
-sg <- brocolors("crayons")["Forest Green"] # "#78dbe2"
+#sg <- brocolors("crayons")["Jungle Green"] # "#78dbe2"
+#sg <- brocolors("crayons")["Forest Green"] # "#78dbe2"
 sg <- brocolors("crayons")["Fern"] # "#78dbe2"
 alg <-  brocolors("crayons")["Raw Umber"] # "#1dacd6" 
 sand <-  brocolors("crayons")["Unmellow Yellow"] # "#f75394"
