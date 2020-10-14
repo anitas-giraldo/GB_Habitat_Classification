@@ -446,6 +446,9 @@ tmap_save(map2, paste(p.dir, "GB-Coarse-FTV.tiff", sep='/'))
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Coarse-DTV.tif", sep='/'))
 plot(pred)
+e <- extent(115.04, 115.606, -33.6258,  -33.3387 )
+pred  <- crop(pred, e)
+plot(pred)
 
 # raster as data frame --
 #redf <- as.data.frame(pred, xy=TRUE) %>% na.omit()
@@ -489,4 +492,9 @@ map2
 
 tmap_save(map2, paste(p.dir, "GB-Coarse-DTV.tiff", sep='/'))
 
+
+
+##      ##       ##        ##        ##       ##
+
+###    ###   ZOOM IN PLOTS   ####
 
