@@ -107,14 +107,14 @@ pred
 
 map1 <- tm_shape(pred) + tm_raster(palette=pal1)
 
-map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black') +
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 2) +
   tm_compass(type = "arrow", position = c(0.84, 0.25), size = 4) +
   tm_scale_bar(breaks = c(0, 5, 10), text.size = 1) + 
   tm_layout(legend.text.size = 1,
             legend.position = c(0.76, 0.1),
             legend.title.color = 'white') +
   #tm_graticules(ticks = FALSE) +
-  tm_grid(lines = FALSE, labels.size = 1) 
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
   
 
 map2
@@ -122,7 +122,7 @@ class(map2)
 
 ## save map ----
 
-tmap_save(map2, paste(p.dir, "GB-Fine-Buvs.tiff", sep='/'))
+tmap_save(map2, paste(p.dir, "GB-Fine-Bruvs.tiff", sep='/'))
 
 
 ####    AUV Fine    ####
@@ -153,18 +153,18 @@ pred
 
 map1 <- tm_shape(pred) + tm_raster(palette=pal1)
 
-map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black') +
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 2) +
   tm_compass(type = "arrow", position = c(0.84, 0.25), size = 4) +
   tm_scale_bar(breaks = c(0, 5, 10), text.size = 1) + 
   tm_layout(legend.text.size = 1,
             legend.position = c(0.76, 0.1),
             legend.title.color = 'white') +
   #tm_graticules(ticks = FALSE) +
-  tm_grid(lines = FALSE, labels.size = 1) 
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
 
 
 map2
-class(map2)
+#class(map2)
 
 ## save map ----
 
@@ -201,18 +201,18 @@ pred
 
 map1 <- tm_shape(pred) + tm_raster(palette=pal1)
 
-map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black') +
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 2) +
   tm_compass(type = "arrow", position = c(0.84, 0.25), size = 4) +
   tm_scale_bar(breaks = c(0, 5, 10), text.size = 1) + 
   tm_layout(legend.text.size = 1,
             legend.position = c(0.76, 0.1),
             legend.title.color = 'white') +
   #tm_graticules(ticks = FALSE) +
-  tm_grid(lines = FALSE, labels.size = 1) 
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
 
 
 map2
-class(map2)
+#class(map2)
 
 ## save map ----
 
@@ -249,18 +249,18 @@ pred
 
 map1 <- tm_shape(pred) + tm_raster(palette=pal1)
 
-map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black') +
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 2) +
   tm_compass(type = "arrow", position = c(0.84, 0.25), size = 4) +
   tm_scale_bar(breaks = c(0, 5, 10), text.size = 1) + 
   tm_layout(legend.text.size = 1,
             legend.position = c(0.76, 0.1),
             legend.title.color = 'white') +
   #tm_graticules(ticks = FALSE) +
-  tm_grid(lines = FALSE, labels.size = 1) 
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
 
 
 map2
-class(map2)
+#class(map2)
 
 ## save map ----
 
@@ -315,14 +315,14 @@ plot(pred)
 map1 <- tm_shape(pred) + tm_raster(palette=pal1)
 map1
 
-map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black') +
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 2) +
   tm_compass(type = "arrow", position = c(0.84, 0.25), size = 4) +
   tm_scale_bar(breaks = c(0, 5, 10), text.size = 1) + 
   tm_layout(legend.text.size = 1,
             legend.position = c(0.76, 0.1),
             legend.title.color = 'white') +
   #tm_graticules(ticks = FALSE) +
-  tm_grid(lines = FALSE, labels.size = 1) 
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
 
 
 map2
@@ -364,14 +364,14 @@ plot(pred)
 
 map1 <- tm_shape(pred) + tm_raster(palette=pal1)
 
-map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black') +
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 2) +
   tm_compass(type = "arrow", position = c(0.84, 0.25), size = 4) +
   tm_scale_bar(breaks = c(0, 5, 10), text.size = 1) + 
   tm_layout(legend.text.size = 1,
             legend.position = c(0.76, 0.1),
             legend.title.color = 'white') +
   #tm_graticules(ticks = FALSE) +
-  tm_grid(lines = FALSE, labels.size = 1) 
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
 
 
 map2
@@ -407,8 +407,8 @@ xx <- xx[c(3,1,2),]
 #xx$ID <- xx$ID[xx$ID != "0",]
 #xx$ID <- ordered(xx$ID, levels = c('3','1', '2'))
 #xx$category <-  ordered(xx$category, levels =c('Unconsolidated', 'Seagrasses', 'Algae'))
-#levels(pred) <- xx
-#pred
+levels(pred) <- xx
+pred
 #xx <-levels(pred)[[1]]
 
 # colors----
@@ -420,18 +420,19 @@ pal1 <- c( sand  ,  sg,  alg)
 
 map1 <- tm_shape(pred) + tm_raster(palette=pal1)
 
-map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black') +
+
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 2) +
   tm_compass(type = "arrow", position = c(0.84, 0.25), size = 4) +
   tm_scale_bar(breaks = c(0, 5, 10), text.size = 1) + 
   tm_layout(legend.text.size = 1,
             legend.position = c(0.76, 0.1),
             legend.title.color = 'white') +
   #tm_graticules(ticks = FALSE) +
-  tm_grid(lines = FALSE, labels.size = 1) 
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
 
 
 map2
-class(map2)
+#class(map2)
 
 ## save map ----
 
@@ -451,15 +452,15 @@ plot(pred)
 #head(predf)
 
 # fix class levels for plotting --
-xx <-levels(pred)[[1]]
-xx
-class(xx)
-xx <- xx[-1,]
-xx$ID <- xx$ID[xx$ID != "0",]
-xx$ID <- c('3','2', '1')
-xx$category <- c('Unconsolidated',  'Seagrasses', 'Algae' )
-levels(pred) <- xx
-pred
+#xx <-levels(pred)[[1]]
+#xx
+#class(xx)
+#xx <- xx[-1,]
+#xx$ID <- xx$ID[xx$ID != "0",]
+#xx$ID <- c('3','2', '1')
+#xx$category <- c('Unconsolidated',  'Seagrasses', 'Algae' )
+#levels(pred) <- xx
+#pred
 #xx <-levels(pred)[[1]]
 
 # colors ----
@@ -471,18 +472,18 @@ pal1 <- c('white', alg,  sg, sand  )
 
 map1 <- tm_shape(pred) + tm_raster(palette=pal1)
 
-map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black') +
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 2) +
   tm_compass(type = "arrow", position = c(0.84, 0.25), size = 4) +
   tm_scale_bar(breaks = c(0, 5, 10), text.size = 1) + 
   tm_layout(legend.text.size = 1,
             legend.position = c(0.76, 0.1),
             legend.title.color = 'white') +
   #tm_graticules(ticks = FALSE) +
-  tm_grid(lines = FALSE, labels.size = 1) 
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
 
 
 map2
-class(map2)
+#class(map2)
 
 ## save map ----
 
