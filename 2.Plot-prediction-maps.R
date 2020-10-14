@@ -498,3 +498,93 @@ tmap_save(map2, paste(p.dir, "GB-Coarse-DTV.tiff", sep='/'))
 
 ###    ###   ZOOM IN PLOTS   ####
 
+
+## create polygon of the NPZ ----
+
+plot(gb)
+#e <- drawExtent()
+e <- extent(115.346, 115.4214, -33.57695, -33.51839) # get extent
+# make extent a polygon
+npzbb <- as(e, 'SpatialPolygons')
+npzbb
+# check
+plot(gb)
+plot(npzbb, add=T)
+
+# NPZ bbox map for reference
+plot(gb, lwd = 2)
+plot(npzbb, lwd = 3, line = 'green', add=T)
+
+
+
+map1 <- tm_shape(gb) + tm_borders(col ='black', lwd = 3)
+
+map2 <- map1 + tm_shape(npzbb)  + tm_borders(col ='red', lwd = 3) +
+  tm_compass(type = "arrow", position = c(0.84, 0.25), size = 4) +
+  tm_scale_bar(breaks = c(0, 5, 10), text.size = 1) + 
+  tm_layout(legend.text.size = 1,
+            legend.position = c(0.76, 0.1),
+            legend.title.color = 'white') +
+  #tm_graticules(ticks = FALSE) +
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
+
+
+map2
+#class(map2)
+
+## save map ----
+
+tmap_save(map2, paste(p.dir, "NPZ-reference.tiff", sep='/'))
+
+
+
+## create polygon of the HPZ ----
+
+plot(gb)
+#e <- drawExtent()
+e <- extent(115.19,115.2446 ,-33.60948,-33.52707) # get extent
+# make extent a polygon
+hpzbb <- as(e, 'SpatialPolygons')
+hpzbb
+# check
+plot(gb)
+plot(hpzbb, add=T)
+
+# NPZ bbox map for reference
+plot(gb, lwd = 2)
+plot(hpzbb, lwd = 3, line = 'green', add=T)
+
+
+
+map1 <- tm_shape(gb) + tm_borders(col ='black', lwd = 3)
+
+map2 <- map1 + tm_shape(hpzbb)  + tm_borders(col ='red', lwd = 3) +
+  tm_compass(type = "arrow", position = c(0.84, 0.25), size = 4) +
+  tm_scale_bar(breaks = c(0, 5, 10), text.size = 1) + 
+  tm_layout(legend.text.size = 1,
+            legend.position = c(0.76, 0.1),
+            legend.title.color = 'white') +
+  #tm_graticules(ticks = FALSE) +
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
+
+
+map2
+#class(map2)
+
+## save map ----
+
+tmap_save(map2, paste(p.dir, "HPZ-reference.tiff", sep='/'))
+
+
+### HPZ ZOOM fine bathy ----
+
+# extent of HPZ --
+e <- extent(115.19,115.2446 ,-33.60948,-33.52707)
+
+# Bruvs data ----
+pred <- raster(paste(o.dir, "GBpred-Fine-Bruvs.tif", sep='/'))
+plot(pred)
+
+# crop to extent --
+p2 <- crop(pred, e)
+plot(p2)
