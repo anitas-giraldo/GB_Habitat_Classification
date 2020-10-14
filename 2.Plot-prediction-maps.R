@@ -517,9 +517,9 @@ plot(npzbb, lwd = 3, line = 'green', add=T)
 
 
 
-map1 <- tm_shape(gb) + tm_borders(col ='black', lwd = 3)
+map1 <- tm_shape(gb) + tm_borders(col ='black', lwd = 6)
 
-map2 <- map1 + tm_shape(npzbb)  + tm_borders(col ='red', lwd = 3) +
+map2 <- map1 + tm_shape(npzbb)  + tm_borders(col ='red', lwd = 6) +
   tm_compass(type = "arrow", position = c(0.84, 0.25), size = 4) +
   tm_scale_bar(breaks = c(0, 5, 10), text.size = 1) + 
   tm_layout(legend.text.size = 1,
@@ -556,9 +556,9 @@ plot(hpzbb, lwd = 3, line = 'green', add=T)
 
 
 
-map1 <- tm_shape(gb) + tm_borders(col ='black', lwd = 3)
+map1 <- tm_shape(gb) + tm_borders(col ='black', lwd = 6)
 
-map2 <- map1 + tm_shape(hpzbb)  + tm_borders(col ='red', lwd = 3) +
+map2 <- map1 + tm_shape(hpzbb)  + tm_borders(col ='red', lwd = 6) +
   tm_compass(type = "arrow", position = c(0.84, 0.25), size = 4) +
   tm_scale_bar(breaks = c(0, 5, 10), text.size = 1) + 
   tm_layout(legend.text.size = 1,
@@ -576,15 +576,711 @@ map2
 tmap_save(map2, paste(p.dir, "HPZ-reference.tiff", sep='/'))
 
 
-### HPZ ZOOM fine bathy ----
+### NPZ ZOOM fine bathy ----
 
 # extent of HPZ --
-e <- extent(115.19,115.2446 ,-33.60948,-33.52707)
+e <- extent(115.346, 115.4214, -33.57695, -33.51839)
+# make extent a polygon
+npzbb <- as(e, 'SpatialPolygons')
+npzbb
+
+# Pick colors ----
+sg <- brocolors("crayons")["Fern"] # "#78dbe2"
+alg <-  brocolors("crayons")["Raw Umber"] # "#1dacd6" 
+sand <-  brocolors("crayons")["Unmellow Yellow"] # "#f75394"
+
+pal1 <- c(sand, sg, alg )
+
+
 
 # Bruvs data ----
 pred <- raster(paste(o.dir, "GBpred-Fine-Bruvs.tif", sep='/'))
 plot(pred)
+# fix class levels for plotting --
+xx <-levels(pred)[[1]]
+xx
+class(xx)
+xx <- xx[-1,]
+xx$ID <- xx$ID[xx$ID != "0",]
+xx$ID <- c('3','2', '1')
+xx$category <- c('Unconsolidated',  'Seagrasses', 'Algae' )
+levels(pred) <- xx
+pred
 
 # crop to extent --
 p2 <- crop(pred, e)
 plot(p2)
+plot(gb, add=T)
+
+###
+
+map1 <- tm_shape(p2) + tm_raster(palette=pal1, legend.show = FALSE)
+map1
+
+
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 3) +
+  tm_compass(type = "arrow", position = c(0.84, 0.15), size = 4) +
+  tm_scale_bar(breaks = c(0, 1, 2), text.size = 1) + 
+  #tm_layout(legend.text.size = 1,
+            #legend.position = c(0.76, 0.1),
+            #legend.title.color = 'white') +
+  #tm_graticules(ticks = FALSE) +
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
+
+
+map2
+
+tmap_save(map2, paste(p.dir, "Zoom-NPZ-Bruvs.tiff", sep='/'))
+
+
+# AUV data ----
+pred <- raster(paste(o.dir, "GBpred-Fine-AUV.tif", sep='/'))
+plot(pred)
+# fix class levels for plotting --
+xx <-levels(pred)[[1]]
+xx
+class(xx)
+xx <- xx[-1,]
+xx$ID <- xx$ID[xx$ID != "0",]
+xx$ID <- c('3','2', '1')
+xx$category <- c('Unconsolidated',  'Seagrasses', 'Algae' )
+levels(pred) <- xx
+pred
+
+# crop to extent --
+p2 <- crop(pred, e)
+plot(p2)
+plot(gb, add=T)
+
+###
+
+map1 <- tm_shape(p2) + tm_raster(palette=pal1, legend.show = FALSE)
+map1
+
+
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 3) +
+  tm_compass(type = "arrow", position = c(0.84, 0.15), size = 4) +
+  tm_scale_bar(breaks = c(0, 1, 2), text.size = 1) + 
+  #tm_layout(legend.text.size = 1,
+  #legend.position = c(0.76, 0.1),
+  #legend.title.color = 'white') +
+  #tm_graticules(ticks = FALSE) +
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
+
+
+map2
+
+tmap_save(map2, paste(p.dir, "Zoom-NPZ-AUV.tiff", sep='/'))
+
+
+# FTV data ----
+pred <- raster(paste(o.dir, "GBpred-Fine-FTV.tif", sep='/'))
+plot(pred)
+# fix class levels for plotting --
+xx <-levels(pred)[[1]]
+xx
+class(xx)
+xx <- xx[-1,]
+xx$ID <- xx$ID[xx$ID != "0",]
+xx$ID <- c('3','2', '1')
+xx$category <- c('Unconsolidated',  'Seagrasses', 'Algae' )
+levels(pred) <- xx
+pred
+
+# crop to extent --
+p2 <- crop(pred, e)
+plot(p2)
+plot(gb, add=T)
+
+###
+
+map1 <- tm_shape(p2) + tm_raster(palette=pal1, legend.show = FALSE)
+map1
+
+
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 3) +
+  tm_compass(type = "arrow", position = c(0.84, 0.15), size = 4) +
+  tm_scale_bar(breaks = c(0, 1, 2), text.size = 1) + 
+  #tm_layout(legend.text.size = 1,
+  #legend.position = c(0.76, 0.1),
+  #legend.title.color = 'white') +
+  #tm_graticules(ticks = FALSE) +
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
+
+
+map2
+
+tmap_save(map2, paste(p.dir, "Zoom-NPZ-FTV.tiff", sep='/'))
+
+
+
+# DTV data ----
+pred <- raster(paste(o.dir, "GBpred-Fine-DTV.tif", sep='/'))
+plot(pred)
+# fix class levels for plotting --
+xx <-levels(pred)[[1]]
+xx
+class(xx)
+xx <- xx[-1,]
+xx$ID <- xx$ID[xx$ID != "0",]
+xx$ID <- c('3','2', '1')
+xx$category <- c('Unconsolidated',  'Seagrasses', 'Algae' )
+levels(pred) <- xx
+pred
+
+# crop to extent --
+p2 <- crop(pred, e)
+plot(p2)
+plot(gb, add=T)
+
+###
+
+map1 <- tm_shape(p2) + tm_raster(palette=pal1, legend.show = FALSE)
+map1
+
+
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 3) +
+  tm_compass(type = "arrow", position = c(0.84, 0.15), size = 4) +
+  tm_scale_bar(breaks = c(0, 1, 2), text.size = 1) + 
+  #tm_layout(legend.text.size = 1,
+  #legend.position = c(0.76, 0.1),
+  #legend.title.color = 'white') +
+  #tm_graticules(ticks = FALSE) +
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
+
+
+map2
+
+tmap_save(map2, paste(p.dir, "Zoom-NPZ-DTV.tiff", sep='/'))
+
+
+### HPZ ZOOM fine bathy ----
+
+# extent of HPZ --
+e <- extent(115.19,115.2446 ,-33.60948,-33.52707)
+# make extent a polygon
+hpzbb <- as(e, 'SpatialPolygons')
+hpzbb
+
+# Pick colors ----
+sg <- brocolors("crayons")["Fern"] # "#78dbe2"
+alg <-  brocolors("crayons")["Raw Umber"] # "#1dacd6" 
+sand <-  brocolors("crayons")["Unmellow Yellow"] # "#f75394"
+
+pal1 <- c(sand, sg, alg )
+
+
+
+# Bruvs data ----
+pred <- raster(paste(o.dir, "GBpred-Fine-Bruvs.tif", sep='/'))
+plot(pred)
+# fix class levels for plotting --
+xx <-levels(pred)[[1]]
+xx
+class(xx)
+xx <- xx[-1,]
+xx$ID <- xx$ID[xx$ID != "0",]
+xx$ID <- c('3','2', '1')
+xx$category <- c('Unconsolidated',  'Seagrasses', 'Algae' )
+levels(pred) <- xx
+pred
+
+# crop to extent --
+p2 <- crop(pred, e)
+plot(p2)
+plot(gb, add=T)
+
+###
+
+map1 <- tm_shape(p2) + tm_raster(palette=pal1, legend.show = FALSE)
+map1
+
+
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 3) +
+  tm_compass(type = "arrow", position = c(0.005, 0.01), size = 2) +
+  tm_scale_bar(breaks = c(0, 1, 2), text.size = 1, position = c(0.15, 0.0001)) + 
+  #tm_layout(legend.text.size = 1,
+  #legend.position = c(0.76, 0.1),
+  #legend.title.color = 'white') +
+  #tm_graticules(ticks = FALSE) +
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
+
+
+map2
+
+tmap_save(map2, paste(p.dir, "Zoom-HPZ-Bruvs.tiff", sep='/'))
+
+
+# AUV data ----
+pred <- raster(paste(o.dir, "GBpred-Fine-AUV.tif", sep='/'))
+plot(pred)
+# fix class levels for plotting --
+xx <-levels(pred)[[1]]
+xx
+class(xx)
+xx <- xx[-1,]
+xx$ID <- xx$ID[xx$ID != "0",]
+xx$ID <- c('3','2', '1')
+xx$category <- c('Unconsolidated',  'Seagrasses', 'Algae' )
+levels(pred) <- xx
+pred
+
+# crop to extent --
+p2 <- crop(pred, e)
+plot(p2)
+plot(gb, add=T)
+
+###
+
+map1 <- tm_shape(p2) + tm_raster(palette=pal1, legend.show = FALSE)
+map1
+
+
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 3) +
+  tm_compass(type = "arrow", position = c(0.005, 0.01), size = 2) +
+  tm_scale_bar(breaks = c(0, 1, 2), text.size = 1, position = c(0.15, 0.0001)) + 
+  #tm_layout(legend.text.size = 1,
+  #legend.position = c(0.76, 0.1),
+  #legend.title.color = 'white') +
+  #tm_graticules(ticks = FALSE) +
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
+
+
+map2
+
+tmap_save(map2, paste(p.dir, "Zoom-HPZ-AUV.tiff", sep='/'))
+
+
+# FTV data ----
+pred <- raster(paste(o.dir, "GBpred-Fine-FTV.tif", sep='/'))
+plot(pred)
+# fix class levels for plotting --
+xx <-levels(pred)[[1]]
+xx
+class(xx)
+xx <- xx[-1,]
+xx$ID <- xx$ID[xx$ID != "0",]
+xx$ID <- c('3','2', '1')
+xx$category <- c('Unconsolidated',  'Seagrasses', 'Algae' )
+levels(pred) <- xx
+pred
+
+# crop to extent --
+p2 <- crop(pred, e)
+plot(p2)
+plot(gb, add=T)
+
+###
+
+map1 <- tm_shape(p2) + tm_raster(palette=pal1, legend.show = FALSE)
+map1
+
+
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 3) +
+  tm_compass(type = "arrow", position = c(0.005, 0.01), size = 2) +
+  tm_scale_bar(breaks = c(0, 1, 2), text.size = 1, position = c(0.15, 0.0001)) + 
+  #tm_layout(legend.text.size = 1,
+  #legend.position = c(0.76, 0.1),
+  #legend.title.color = 'white') +
+  #tm_graticules(ticks = FALSE) +
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
+
+
+map2
+
+tmap_save(map2, paste(p.dir, "Zoom-HPZ-FTV.tiff", sep='/'))
+
+
+
+# DTV data ----
+pred <- raster(paste(o.dir, "GBpred-Fine-DTV.tif", sep='/'))
+plot(pred)
+# fix class levels for plotting --
+xx <-levels(pred)[[1]]
+xx
+class(xx)
+xx <- xx[-1,]
+xx$ID <- xx$ID[xx$ID != "0",]
+xx$ID <- c('3','2', '1')
+xx$category <- c('Unconsolidated',  'Seagrasses', 'Algae' )
+levels(pred) <- xx
+pred
+
+# crop to extent --
+p2 <- crop(pred, e)
+plot(p2)
+plot(gb, add=T)
+
+###
+
+map1 <- tm_shape(p2) + tm_raster(palette=pal1, legend.show = FALSE)
+map1
+
+
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 3) +
+  tm_compass(type = "arrow", position = c(0.005, 0.01), size = 2) +
+  tm_scale_bar(breaks = c(0, 1, 2), text.size = 1, position = c(0.15, 0.0001)) + 
+  #tm_layout(legend.text.size = 1,
+  #legend.position = c(0.76, 0.1),
+  #legend.title.color = 'white') +
+  #tm_graticules(ticks = FALSE) +
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
+
+
+map2
+
+tmap_save(map2, paste(p.dir, "Zoom-HPZ-DTV.tiff", sep='/'))
+
+
+
+
+### NPZ ZOOM coarse bathy ----
+
+# extent of HPZ --
+e <- extent(115.346, 115.4214, -33.57695, -33.51839)
+# make extent a polygon
+npzbb <- as(e, 'SpatialPolygons')
+npzbb
+
+# Pick colors ----
+sg <- brocolors("crayons")["Fern"] # "#78dbe2"
+alg <-  brocolors("crayons")["Raw Umber"] # "#1dacd6" 
+sand <-  brocolors("crayons")["Unmellow Yellow"] # "#f75394"
+
+pal1 <- c(sand, sg, alg )
+
+
+
+# Bruvs data ----
+pred <- raster(paste(o.dir, "GBpred-Coarse-Bruvs.tif", sep='/'))
+plot(pred)
+# fix class levels for plotting --
+xx <-levels(pred)[[1]]
+xx
+class(xx)
+xx <- xx[-1,]
+xx$ID <- xx$ID[xx$ID != "0",]
+xx$ID <- c('3','2', '1')
+xx$category <- c('Unconsolidated',  'Seagrasses', 'Algae' )
+levels(pred) <- xx
+pred
+
+# crop to extent --
+p2 <- crop(pred, e)
+plot(p2)
+plot(gb, add=T)
+
+###
+
+map1 <- tm_shape(p2) + tm_raster(palette=pal1, legend.show = FALSE)
+map1
+
+
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 3) +
+  tm_compass(type = "arrow", position = c(0.84, 0.15), size = 4) +
+  tm_scale_bar(breaks = c(0, 1, 2), text.size = 1) + 
+  #tm_layout(legend.text.size = 1,
+  #legend.position = c(0.76, 0.1),
+  #legend.title.color = 'white') +
+  #tm_graticules(ticks = FALSE) +
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
+
+
+map2
+
+tmap_save(map2, paste(p.dir, "Zoom-NPZ-coarse-Bruvs.tiff", sep='/'))
+
+
+# AUV data ----
+pred <- raster(paste(o.dir, "GBpred-Coarse-AUV.tif", sep='/'))
+plot(pred)
+# fix class levels for plotting --
+xx <-levels(pred)[[1]]
+xx
+class(xx)
+xx <- xx[-1,]
+xx$ID <- xx$ID[xx$ID != "0",]
+xx$ID <- c('3','2', '1')
+xx$category <- c('Unconsolidated',  'Seagrasses', 'Algae' )
+levels(pred) <- xx
+pred
+
+# crop to extent --
+p2 <- crop(pred, e)
+plot(p2)
+plot(gb, add=T)
+
+###
+
+map1 <- tm_shape(p2) + tm_raster(palette=pal1, legend.show = FALSE)
+map1
+
+
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 3) +
+  tm_compass(type = "arrow", position = c(0.84, 0.15), size = 4) +
+  tm_scale_bar(breaks = c(0, 1, 2), text.size = 1) + 
+  #tm_layout(legend.text.size = 1,
+  #legend.position = c(0.76, 0.1),
+  #legend.title.color = 'white') +
+  #tm_graticules(ticks = FALSE) +
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
+
+
+map2
+
+tmap_save(map2, paste(p.dir, "Zoom-NPZ-coarse-AUV.tiff", sep='/'))
+
+
+# FTV data ----
+pred <- raster(paste(o.dir, "GBpred-coarse-FTV.tif", sep='/'))
+plot(pred)
+# fix class levels for plotting --
+xx <-levels(pred)[[1]]
+xx
+class(xx)
+xx <- xx[-1,]
+xx <- xx[c(3,1,2),]
+#xx$ID <- xx$ID[xx$ID != "0",]
+#xx$ID <- ordered(xx$ID, levels = c('3','1', '2'))
+#xx$category <-  ordered(xx$category, levels =c('Unconsolidated', 'Seagrasses', 'Algae'))
+levels(pred) <- xx
+pred
+#xx <-levels(pred)[[1]]
+
+# colors----
+pal1 <- c( sand  ,  sg,  alg)
+
+# crop to extent --
+p2 <- crop(pred, e)
+plot(p2)
+plot(gb, add=T)
+
+###
+
+map1 <- tm_shape(p2) + tm_raster(palette=pal1, legend.show = FALSE)
+map1
+
+
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 3) +
+  tm_compass(type = "arrow", position = c(0.84, 0.15), size = 4) +
+  tm_scale_bar(breaks = c(0, 1, 2), text.size = 1) + 
+  #tm_layout(legend.text.size = 1,
+  #legend.position = c(0.76, 0.1),
+  #legend.title.color = 'white') +
+  #tm_graticules(ticks = FALSE) +
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
+
+
+map2
+
+tmap_save(map2, paste(p.dir, "Zoom-NPZ-coarse-FTV.tiff", sep='/'))
+
+
+
+# DTV data ----
+pred <- raster(paste(o.dir, "GBpred-Coarse-DTV.tif", sep='/'))
+plot(pred)
+# colors ----
+pal1 <- c('white', alg,  sg, sand  )
+
+# crop to extent --
+p2 <- crop(pred, e)
+plot(p2)
+plot(gb, add=T)
+
+###
+
+map1 <- tm_shape(p2) + tm_raster(palette=pal1, legend.show = FALSE)
+map1
+
+
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 3) +
+  tm_compass(type = "arrow", position = c(0.84, 0.15), size = 4) +
+  tm_scale_bar(breaks = c(0, 1, 2), text.size = 1) + 
+  #tm_layout(legend.text.size = 1,
+  #legend.position = c(0.76, 0.1),
+  #legend.title.color = 'white') +
+  #tm_graticules(ticks = FALSE) +
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
+
+
+map2
+
+tmap_save(map2, paste(p.dir, "Zoom-NPZ-coarse-DTV.tiff", sep='/'))
+
+
+### HPZ ZOOM coarse bathy ----
+
+# extent of HPZ --
+e <- extent(115.19,115.2446 ,-33.60948,-33.52707)
+# make extent a polygon
+hpzbb <- as(e, 'SpatialPolygons')
+hpzbb
+
+# Pick colors ----
+sg <- brocolors("crayons")["Fern"] # "#78dbe2"
+alg <-  brocolors("crayons")["Raw Umber"] # "#1dacd6" 
+sand <-  brocolors("crayons")["Unmellow Yellow"] # "#f75394"
+
+pal1 <- c(sand, sg, alg )
+
+
+
+# Bruvs data ----
+pred <- raster(paste(o.dir, "GBpred-coarse-Bruvs.tif", sep='/'))
+plot(pred)
+# fix class levels for plotting --
+xx <-levels(pred)[[1]]
+xx
+class(xx)
+xx <- xx[-1,]
+xx$ID <- xx$ID[xx$ID != "0",]
+xx$ID <- c('3','2', '1')
+xx$category <- c('Unconsolidated',  'Seagrasses', 'Algae' )
+levels(pred) <- xx
+pred
+
+# crop to extent --
+p2 <- crop(pred, e)
+plot(p2)
+plot(gb, add=T)
+
+###
+
+map1 <- tm_shape(p2) + tm_raster(palette=pal1, legend.show = FALSE)
+map1
+
+
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 3) +
+  tm_compass(type = "arrow", position = c(0.005, 0.01), size = 2) +
+  tm_scale_bar(breaks = c(0, 1, 2), text.size = 1, position = c(0.15, 0.0001)) + 
+  #tm_layout(legend.text.size = 1,
+  #legend.position = c(0.76, 0.1),
+  #legend.title.color = 'white') +
+  #tm_graticules(ticks = FALSE) +
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
+
+
+map2
+
+tmap_save(map2, paste(p.dir, "Zoom-HPZ-coarse-Bruvs.tiff", sep='/'))
+
+
+# AUV data ----
+pred <- raster(paste(o.dir, "GBpred-Coarse-AUV.tif", sep='/'))
+plot(pred)
+# fix class levels for plotting --
+xx <-levels(pred)[[1]]
+xx
+class(xx)
+xx <- xx[-1,]
+xx$ID <- xx$ID[xx$ID != "0",]
+xx$ID <- c('3','2', '1')
+xx$category <- c('Unconsolidated',  'Seagrasses', 'Algae' )
+levels(pred) <- xx
+pred
+
+# crop to extent --
+p2 <- crop(pred, e)
+plot(p2)
+plot(gb, add=T)
+
+###
+
+map1 <- tm_shape(p2) + tm_raster(palette=pal1, legend.show = FALSE)
+map1
+
+
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 3) +
+  tm_compass(type = "arrow", position = c(0.005, 0.01), size = 2) +
+  tm_scale_bar(breaks = c(0, 1, 2), text.size = 1, position = c(0.15, 0.0001)) + 
+  #tm_layout(legend.text.size = 1,
+  #legend.position = c(0.76, 0.1),
+  #legend.title.color = 'white') +
+  #tm_graticules(ticks = FALSE) +
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
+
+
+map2
+
+tmap_save(map2, paste(p.dir, "Zoom-HPZ-coarse-AUV.tiff", sep='/'))
+
+
+# FTV data ----
+pred <- raster(paste(o.dir, "GBpred-Coarse-FTV.tif", sep='/'))
+plot(pred)
+# fix class levels for plotting --
+xx <-levels(pred)[[1]]
+xx
+class(xx)
+xx <- xx[-1,]
+xx <- xx[c(3,1,2),]
+#xx$ID <- xx$ID[xx$ID != "0",]
+#xx$ID <- ordered(xx$ID, levels = c('3','1', '2'))
+#xx$category <-  ordered(xx$category, levels =c('Unconsolidated', 'Seagrasses', 'Algae'))
+levels(pred) <- xx
+pred
+#xx <-levels(pred)[[1]]
+
+# colors----
+pal1 <- c( sand  ,  sg,  alg)
+
+# crop to extent --
+p2 <- crop(pred, e)
+plot(p2)
+plot(gb, add=T)
+
+###
+
+map1 <- tm_shape(p2) + tm_raster(palette=pal1, legend.show = FALSE)
+map1
+
+
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 3) +
+  tm_compass(type = "arrow", position = c(0.005, 0.01), size = 2) +
+  tm_scale_bar(breaks = c(0, 1, 2), text.size = 1, position = c(0.15, 0.0001)) + 
+  #tm_layout(legend.text.size = 1,
+  #legend.position = c(0.76, 0.1),
+  #legend.title.color = 'white') +
+  #tm_graticules(ticks = FALSE) +
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
+
+
+map2
+
+tmap_save(map2, paste(p.dir, "Zoom-HPZ-coarse-FTV.tiff", sep='/'))
+
+
+
+# DTV data ----
+pred <- raster(paste(o.dir, "GBpred-Coarse-DTV.tif", sep='/'))
+plot(pred)
+# colors ----
+pal1 <- c('white', alg,  sg, sand  )
+
+# crop to extent --
+p2 <- crop(pred, e)
+plot(p2)
+plot(gb, add=T)
+
+###
+
+map1 <- tm_shape(p2) + tm_raster(palette=pal1, legend.show = FALSE)
+map1
+
+
+map2 <- map1 + tm_shape(gb)  + tm_borders(col ='black', lwd = 3) +
+  tm_compass(type = "arrow", position = c(0.005, 0.01), size = 2) +
+  tm_scale_bar(breaks = c(0, 1, 2), text.size = 1, position = c(0.15, 0.0001)) + 
+  #tm_layout(legend.text.size = 1,
+  #legend.position = c(0.76, 0.1),
+  #legend.title.color = 'white') +
+  #tm_graticules(ticks = FALSE) +
+  tm_grid(n.x = 3, n.y = 3, labels.size = 1.5, lines = FALSE) 
+
+
+map2
+
+tmap_save(map2, paste(p.dir, "Zoom-HPZ-coarse-DTV.tiff", sep='/'))
+
+
