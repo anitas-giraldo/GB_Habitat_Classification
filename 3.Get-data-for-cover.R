@@ -57,11 +57,11 @@ o.dir <- paste(w.dir, "outputs", sep='/')
 
 # Read gb cmr poly ----
 gb <- st_read(dsn="C:/Users/00093391/Dropbox/UWA/Research Associate/PowAnalysis_for1sParksMeeting/Desktop/shapefiles")
-gb <- readOGR(dsn="C:/Users/00093391/Dropbox/UWA/Research Associate/PowAnalysis_for1sParksMeeting/Desktop/shapefiles")
-plot(gb)
-levels(gb$ZoneName)
+gbu <- readOGR(dsn="C:/Users/00093391/Dropbox/UWA/Research Associate/PowAnalysis_for1sParksMeeting/Desktop/shapefiles")
+plot(gbu)
+levels(gbu$ZoneName)
 
-crs1 <- proj4string(gb) # "+proj=longlat +ellps=GRS80 +no_defs"
+crs1 <- proj4string(gbu) # "+proj=longlat +ellps=GRS80 +no_defs"
 
 # for transformations --
 #gbu <- readOGR(dsn="G:/My Drive/Anita/Shapefiles/GeoBay_CMR_UTM.shp") 
@@ -70,12 +70,12 @@ crs1 <- proj4string(gb) # "+proj=longlat +ellps=GRS80 +no_defs"
 
 
 # get poly for each zone --
-NPZ <- gb[gb$ZoneName=="National Park Zone",]
+NPZ <- gbu[gbu$ZoneName=="National Park Zone",]
 plot(NPZ)
-HPZ <- gb[gb$ZoneName=="Habitat Protection Zone",]
-MUZ <- gb[gb$ZoneName=="Multiple Use Zone",]
+HPZ <- gbu[gbu$ZoneName=="Habitat Protection Zone",]
+MUZ <- gbu[gbu$ZoneName=="Multiple Use Zone",]
 plot(MUZ)
-SPZ <- gb[gb$ZoneName=="Special Purpose Zone (Mining Exclusion)",]
+SPZ <- gbu[gbu$ZoneName=="Special Purpose Zone (Mining Exclusion)",]
 
 # Pick colors ----
 sg <- brocolors("crayons")["Fern"] # "#78dbe2"
@@ -92,14 +92,14 @@ pal1 <- c(sand, sg, alg )
 ####    BRUVs Fine    ####
 
 # Read data ----
-predu <- raster(paste(o.dir, "GBpred-Fine-Bruvs.tif", sep='/'))
-plot(predu) # 1= algae, 2=seagrass, 3=Unveg
+pred <- raster(paste(o.dir, "GBpred-Fine-Bruvs.tif", sep='/'))
+plot(pred) # 1= algae, 2=seagrass, 3=Unveg
 
 
 # NPZ ----
-npzb <- mask(predu, NPZ)
+npzb <- mask(pred, NPZ)
 plot(npzb)
-plot(gb, add=T)
+plot(gbu, add=T)
 
 b <- as.data.frame(npzb) %>%
     group_by(category) %>%
@@ -115,7 +115,7 @@ pred <- raster(paste(o.dir, "GBpred-Fine-AUV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
 
 # NPZ ----
-npzb <- mask(predu, NPZ)
+npzb <- mask(pred, NPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -136,7 +136,7 @@ plot(pred) # 1= algae, 2=seagrass, 3=Unveg
 
 
 # NPZ ----
-npzb <- mask(predu, NPZ)
+npzb <- mask(pred, NPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -155,7 +155,7 @@ plot(pred) # 1= algae, 2=seagrass, 3=Unveg
 
 
 # NPZ ----
-npzb <- mask(predu, NPZ)
+npzb <- mask(pred, NPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -200,7 +200,7 @@ plot(pred) # 1= algae, 2=seagrass, 3=Unveg
 
 
 # HPZ ----
-npzb <- mask(predu, HPZ)
+npzb <- mask(pred, HPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -219,7 +219,7 @@ plot(pred) # 1= algae, 2=seagrass, 3=Unveg
 
 
 # HPZ ----
-npzb <- mask(predu, HPZ)
+npzb <- mask(pred, HPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -239,7 +239,7 @@ plot(pred) # 1= algae, 2=seagrass, 3=Unveg
 
 
 # HPZ ----
-npzb <- mask(predu, HPZ)
+npzb <- mask(pred, HPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -304,7 +304,7 @@ plot(pred) # 1= algae, 2=seagrass, 3=Unveg
 
 
 # MUZ ----
-npzb <- mask(predu, MUZ)
+npzb <- mask(pred, MUZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -320,16 +320,9 @@ b
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Fine-AUV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
-
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # MUZ ----
-npzb <- mask(predu, MUZ)
+npzb <- mask(pred, MUZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -346,16 +339,10 @@ a
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Fine-FTV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # MUZ ----
-npzb <- mask(predu, MUZ)
+npzb <- mask(pred, MUZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -371,16 +358,10 @@ f
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Fine-DTV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # MUZ ----
-npzb <- mask(predu, MUZ)
+npzb <- mask(pred, MUZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -423,16 +404,10 @@ fine.muz
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Fine-Bruvs.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # SPZ ----
-npzb <- mask(predu, SPZ)
+npzb <- mask(pred, SPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -448,16 +423,10 @@ b
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Fine-AUV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # SPZ ----
-npzb <- mask(predu, SPZ)
+npzb <- mask(pred, SPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -474,16 +443,10 @@ a
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Fine-FTV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # SPZ ----
-npzb <- mask(predu, SPZ)
+npzb <- mask(pred, SPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -499,16 +462,10 @@ f
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Fine-DTV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # SPZ ----
-npzb <- mask(predu, SPZ)
+npzb <- mask(pred, SPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -565,19 +522,10 @@ write.csv(fineall, paste(dt.dir, "Areal-coverage-fine.csv", sep='/'))
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Coarse-Bruvs.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-pred@data@values=1
-
-
-# project --
-predu <- projectRaster(pred, crs = crs2, method='ngb')
-plot(predu)
-levels(predu) <- xx
 
 # NPZ ----
-npzb <- mask(predu, NPZ)
+npzb <- mask(pred, NPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -593,16 +541,10 @@ b
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Coarse-AUV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # NPZ ----
-npzb <- mask(predu, NPZ)
+npzb <- mask(pred, NPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -620,16 +562,10 @@ a
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Coarse-FTV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # NPZ ----
-npzb <- mask(predu, NPZ)
+npzb <- mask(pred, NPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -645,16 +581,10 @@ f
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Coarse-DTV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # NPZ ----
-npzb <- mask(predu, NPZ)
+npzb <- mask(pred, NPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -696,16 +626,10 @@ coarse.npz
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Coarse-Bruvs.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # HPZ ----
-npzb <- mask(predu, HPZ)
+npzb <- mask(pred, HPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -721,16 +645,10 @@ b
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Coarse-AUV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # NPZ ----
-npzb <- mask(predu, HPZ)
+npzb <- mask(pred, HPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -747,16 +665,10 @@ a
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Coarse-FTV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # NPZ ----
-npzb <- mask(predu, HPZ)
+npzb <- mask(pred, HPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -772,16 +684,10 @@ f
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Coarse-DTV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # NPZ ----
-npzb <- mask(predu, HPZ)
+npzb <- mask(pred, HPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -824,16 +730,10 @@ coarse.hpz
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Coarse-Bruvs.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # MUZ ----
-npzb <- mask(predu, MUZ)
+npzb <- mask(pred, MUZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -849,16 +749,10 @@ b
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Coarse-AUV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # MUZ ----
-npzb <- mask(predu, MUZ)
+npzb <- mask(pred, MUZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -875,16 +769,10 @@ a
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Coarse-FTV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # MUZ ----
-npzb <- mask(predu, MUZ)
+npzb <- mask(pred, MUZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -900,16 +788,10 @@ f
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Coarse-DTV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # MUZ ----
-npzb <- mask(predu, MUZ)
+npzb <- mask(pred, MUZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -952,16 +834,10 @@ coarse.muz
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Coarse-Bruvs.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # SPZ ----
-npzb <- mask(predu, SPZ)
+npzb <- mask(pred, SPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -977,16 +853,10 @@ b
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Coarse-AUV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # SPZ ----
-npzb <- mask(predu, SPZ)
+npzb <- mask(pred, SPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -1003,16 +873,10 @@ a
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Coarse-FTV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # SPZ ----
-npzb <- mask(predu, SPZ)
+npzb <- mask(pred, SPZ)
 plot(npzb)
 plot(gbu, add=T)
 
@@ -1028,16 +892,10 @@ f
 # Read data ----
 pred <- raster(paste(o.dir, "GBpred-Coarse-DTV.tif", sep='/'))
 plot(pred) # 1= algae, 2=seagrass, 3=Unveg
-xx <- levels(pred[[1]])
-xx
 
-# project --
-predu <- projectRaster(pred, crs = crs2)
-plot(predu)
-levels(predu) <- xx
 
 # SPZ ----
-npzb <- mask(predu, SPZ)
+npzb <- mask(pred, SPZ)
 plot(npzb)
 plot(gbu, add=T)
 
