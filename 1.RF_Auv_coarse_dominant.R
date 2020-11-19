@@ -36,6 +36,10 @@ library(gstat)
 install.packages("corrplot")
 library(corrplot)
 library(broman)
+install.packages("Boruta")
+library(Boruta)
+library(ranger)
+library(e1071)
 
 # Clear memory ----
 rm(list=ls())
@@ -89,15 +93,6 @@ summary(df2)
 head(df2)
 
 ## Plot predictors correlations by class -----
-
-# matrix scatterplot of just these 13 variables --
-scatterplotMatrix(df2[2:10], col = df2$Class)
-
-plot(df2[2:10], col = df2$Class)
-legend("center", 
-       legend = levels(df2$Class))
-
-
 ## using corrplot ----
 
 # compute correlation matrix --
@@ -189,8 +184,8 @@ set.seed(777)
 sample <- caTools::sample.split(df2$flowdir, SplitRatio = 0.75)
 train <- subset(df2, sample == TRUE)
 test  <-subset(df2, sample == FALSE)
-dim(train) # [1] 74 10
-dim(test) # [1] 25 10
+dim(train) # [1] 64 10
+dim(test) # [1] 20 10
 
 
 
