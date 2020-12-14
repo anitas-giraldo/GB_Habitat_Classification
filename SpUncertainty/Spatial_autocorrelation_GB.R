@@ -111,6 +111,8 @@ head(test)
 # remove unwanted cols 
 test <- test[,-c(4:12)]
 head(test)
+str(test)
+test$Class <- as.factor(test$Class)
 
 #### Join predicitions w validation ----
 # check predicted levels
@@ -338,6 +340,9 @@ leaflet(preds) %>%
 
 maxDist<-max(dist(cbind(preds$coords.x1, preds$coords.x2)))
 maxDist
+
+mind <- min(dist(cbind(preds$coords.x1, preds$coords.x2)))
+mind
 
 xy=cbind(preds$coords.x1, preds$coords.x2)
 pgi.cor <- correlog(coords=xy, z=preds$correct, method="Moran", nbclass=10)   # "pgirmess" package
