@@ -5,6 +5,8 @@
 
 ### Load libraries ----
 
+library(FactoMineR)
+library(factoextra)
 library(ggplot2)
 library(ggthemes)
 library(cowplot)
